@@ -9,7 +9,6 @@
 	<li>Cryptocurrency</li>
 </ul>
 
-<p>&nbsp;</p>
 # Objective
 <h3 style="font-style: italic;">Week 1</h3>
 <p>Successfully collect all data from Alpha Vantage API for different financial markets and store them for usage. If we have more time, we will try to collect technical indicators data and financial news through&nbsp;RSS feeds</p>
