@@ -1,4 +1,4 @@
-# Algorithmic Trading
+# Abstract
 <div>
 	We are trying to build a customizable backtesting and live trading program for the listed financial markets (will be updated):</div>
 <div>
