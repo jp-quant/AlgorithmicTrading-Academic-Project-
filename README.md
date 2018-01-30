@@ -1,9 +1,16 @@
+# Algorithmic Trading 
+### Contributors:
 # Abstract
-<div>
-	We are trying to build a customizable backtesting and live trading program for the listed financial markets (will be updated):</div>
-<div>
-	&nbsp;</div>
+<p>We are trying to build a customizable backtesting program for the different financial markets (possily live trading as well), using <a href="http://bit.ly/2DXVpKM">Alpha Vantage&#39;s API</a>&nbsp;and various other modules included in our projects.</p>
+
 <ul>
-<li>Foreign Exchange Currency (Forex)</li>
-<li>Stocks</li>
+	<li>Foreign Exchange Currency (Forex)</li>
+	<li>Stocks</li>
+	<li>Cryptocurrency</li>
 </ul>
+
+<p>&nbsp;</p>
+
+# Objective
+Week 1
+Successfully collect financial data using Alpha Vantage API, store and clean them for upcoming objective.
