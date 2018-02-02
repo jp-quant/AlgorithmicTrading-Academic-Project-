@@ -73,7 +73,7 @@ class StartProgram:
                     data = oanda.get_history(instrument= i,  # our instrument
                          start= opy_start,  # start data
                          end= opy_end,  # end date
-                         granularity='M5')
+                         granularity= x)
                     location = os.path.join(os.getcwd(),'database',market,i,opy_start + ' to ' + opy_end,x)
                     df = pd.DataFrame(data['candles']).set_index('time')
                     df.index = pd.DatetimeIndex(df.index)
