@@ -10,7 +10,7 @@ import datetime
 import json
 import pandas as pd
 import errno
-import oandapy as opy
+import oandapyV20 as opy
 
 
 class StartProgram:
@@ -22,7 +22,7 @@ class StartProgram:
                  opy_start,
                  opy_end,
                  symbols = ['AAPL','CALD','ENVA'],
-                 interval = ['15min','30mins']):
+                 interval = ['15min','30min']):
         
         #setting variables to self
         self.api= api
@@ -46,19 +46,19 @@ class StartProgram:
                         elif x.lower() == 'daily adjusted':
                             data, metadata = ts.get_daily_adjusted(symbol = i, outputsize= 'full')
                         elif x.lower() == 'weekly':
-                            data, metadata = ts.get_weekly(symbol = i, outputsize= 'full')
+                            data, metadata = ts.get_weekly(symbol = i)
                         elif x.lower() == 'weekly adjusted':
-                            data, metadata = ts.get_weekly_adjusted(symbol = i, outputsize= 'full')
+                            data, metadata = ts.get_weekly_adjusted(symbol = i)
                         elif x.lower() == 'monthly':
-                            data, metadata = ts.get_monthly(symbol = i, outputsize= 'full')
+                            data, metadata = ts.get_monthly(symbol = i)
                         elif x.lower() == 'monthly adjusted':
-                            data, metadata = ts.get_monthly_adjusted(symbol = i, outputsize= 'full')
+                            data, metadata = ts.get_monthly_adjusted(symbol = i)
                         elif x.lower() == '1min' or '5min' or '15min' or '30min' or '60min':
                             data, metadata = ts.get_intraday(symbol = i, interval = x, outputsize= 'full')
                         else:
                             exit
                         location = os.path.join(os.getcwd(),'database',market,i,x)
-                        print 'Downloading data for ' + i + ' at ' + x + ' interval' + '...'
+                        print('Downloading data for ' + i + ' at ' + x + ' interval' + '...')
                         try:
                             os.makedirs(location)
                         except OSError as e:
@@ -77,7 +77,7 @@ class StartProgram:
                     location = os.path.join(os.getcwd(),'database',market,i,opy_start + ' to ' + opy_end,x)
                     df = pd.DataFrame(data['candles']).set_index('time')
                     df.index = pd.DatetimeIndex(df.index)
-                    print 'Downloading data for ' + i + ' at ' + x + ' interval' + ' at specificed time frame...'
+                    print('Downloading data for ' + i + ' at ' + x + ' interval' + ' at specificed time frame...')
                     try:
                             os.makedirs(location)
                     except OSError as e:
