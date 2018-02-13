@@ -28,11 +28,14 @@
 	<li><a href="http://bit.ly/2DXVpKM">Alpha Vantage</a></li>
 	<li><a href="http://bit.ly/2E7srZP">OANDA</a></li>
 </ul>
+
 <h3 style="font-style: italic;">Week 2</h3>
 <p>This week, we collected basic technical indicator data for the program. We began work on creating areas for user input in which users could enter a time interval to show them information about a specific stock or forex currency. We also created error codes.</p>
 <p>By the next week, we hope to fix onandapy so that it can pull forex data for Python 2.7 as well as Python 3.6. As of now, users can run the program and input a specific time interval for a specific stock or currency and retrieve a csv file that shows them information on that stock or currency for the time interval entered.</p>
 <h3 style="font-style: italic;">Week 3</h3>
 <p>This week, we were able to troubleshoot and make oandapy work on Python 3.6. Also, we created a data frame which stores data pulled from the program.</p>
 <p> For the future, we hope to write functions for buying, selling, and backtesting. We also hope to add more complex technical indicator data to the program.</p>
+
+
 # Conclusion
 N/A
