@@ -3,6 +3,7 @@ from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.techindicators import TechIndicators
 from alpha_vantage.sectorperformance import SectorPerformances
 from alpha_vantage.cryptocurrencies import CryptoCurrencies
+import TechnicalIndicators as ti
 import matplotlib
 import matplotlib.pyplot as plt
 import os
@@ -35,9 +36,11 @@ class MainFrame:
         self.buy_trig = False
         self.sell_trig = False
         self.dataframe = {}
-        
+        self.ti = {}
+        self.ti_list = []
         #Use wrapper to import data and save them automatically if needed
         ts = TimeSeries(key=api, output_format = 'pandas')
+        ti = TechIndicators(key=api, output_format='pandas')
         oanda = opy.API(environment='practice', access_token= api)
         
         #If market is stocks, we use Alpha Vantage API
