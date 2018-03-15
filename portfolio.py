@@ -30,6 +30,7 @@ class NaivePortfolio(Portfolio):
     def __init__(self, bars, events, start_date, initial_balance = 100000.0):
 
         self.bars = bars
+        self.equity_curve = None
         self.events = events
         self.symbols = self.bars.symbols
         self.start_date = start_date
@@ -47,14 +48,15 @@ class NaivePortfolio(Portfolio):
     def construct_all_positions(self):
         d = {symbol: 0.0 for symbol in self.symbols}
         d['datetime'] = self.start_date
-        return d
+        return [d]
         
     def construct_all_holdings(self):
         d = {symbol: 0.0 for symbol in self.symbols}
+        d['datetime'] = self.start_date
         d['cash'] = self.initial_balance
-        d['comission'] = 0.0
+        d['commission'] = 0.0
         d['total'] = self.initial_balance
-        return d
+        return [d]
 
     def construct_current_holdings(self):
         d = d = {symbol: 0.0 for symbol in self.symbols}
@@ -66,7 +68,9 @@ class NaivePortfolio(Portfolio):
     def update_timeindex(self,event):
         bars = {symbol: self.bars.get_latest_bars(symbol,N=1) for symbol in self.symbols}
         positions = {symbol: self.current_positions[symbol] for symbol in self.symbols}
-        self.all_positions.update(positions)
+        datetime = bars[self.symbols[0]][0][1]
+        positions['datetime'] = datetime
+        self.all_positions.append(positions)
 
         dh = {symbol: 0 for symbol in self.symbols}
         dh['datetime'] = bars[self.symbols[0]][0][1]
@@ -77,9 +81,9 @@ class NaivePortfolio(Portfolio):
         for i in self.symbols:
             market_value = self.current_positions[i] * bars[i][0][5]
             dh[i] = market_value
-            dh['total'] += market_value
+            dh['total'] += market_value #total represents the total amount
 
-        self.all_holdings.update(dh)
+        self.all_holdings.append(dh)
 
     def update_positions(self, fill):
         fill_dir = 0
@@ -98,7 +102,7 @@ class NaivePortfolio(Portfolio):
         fill_cost = self.bars.get_latest_bars(fill.symbol)[0][5]  # Close price
         cost = fill_dir * fill_cost * fill.quantity
         self.current_holdings[fill.symbol] += cost
-        self.current_holdings['commission'] += fill.commission
+        self.current_holdings['commission'] += fill.commission # keep an eye on commission if there really is one
         self.current_holdings['cash'] -= (cost + fill.commission)
         self.current_holdings['total'] -= (cost + fill.commission)
         
@@ -109,7 +113,7 @@ class NaivePortfolio(Portfolio):
         direction = signal.signal_type
         strength = 1.05
             
-        market_quantity = floor(100 * strength)
+        market_quantity = floor(100 * strength) # for stock this is the amount of shares
         current_quantity = self.current_positions[symbol]
         order_type = 'MKT'
 
@@ -137,7 +141,8 @@ class NaivePortfolio(Portfolio):
         self.equity_curve = curve
         
     def output_summary_stats(self):
-        total_return = self.equity_curve['equity_cure'][-1]
+        self.create_equity_curve_dataframe()
+        total_return = self.equity_curve['equity_curve'][-1]
         returns = self.equity_curve['returns']
         pnl = self.equity_curve['equity_curve']
 

@@ -20,13 +20,13 @@ Strategy = strategy.BuyAndHoldStrategy(bars = DataFrame, events = Events)
 
 while True:
     if DataFrame.continue_backtest == True:
-        DataFrame.update_bars()
+        DataFrame.update_bars() # constantly spit out data from the symbol data generator created when initilizing DataFrame
     else:
         break
     
     while True:
         try:
-            event = Events.get(False)
+            event = Events.get(False) # constantly spit out event queued from Events which direct on what to do
         except Queue.Empty:
             break
         
