@@ -2,7 +2,7 @@
 ### Contributors: Jack Pham, Moritz Droste, Lauren Wong, Ajay Bhatia
 # Abstract
 <p> Trading the financial markets no longer embodies in the form of trading floor in NYSE, packed with suits and sweats, but rather automated through computers. Tycoon firms like Goldman Sachs is the number one High Frequency Trading firm, with the majority of its revenue come from automated trading aka algorithmic trading, at high frequency (fractions of a second)</p>
-<p> We are trying to build an easily accessible algorithmic trading program that allows users to backtest and live trade their trading strategies on any desired market. For the current system, we are using even-driven programming to develop our backtesting engine. This is so that the codes can be re-use to not just backtest, but live trade as well. In addition, by using event-driven backtests, we simulate a much more realistic scenerio of trading and preserve non-bias decisions making.</p>
+<p> We are trying to build an easily accessible algorithmic trading program that allows users to backtest and live trade their trading strategies on any desired market. For the current system, we are using event-driven programming to develop our backtesting engine. This is so that the dataframe codes can be re-use to not just backtest, but live trade as well. In addition, by using event-driven backtests, we simulate a much more realistic scenerio of trading and preserve non-bias decisions making.</p>
 
 # Blueprint
 <ul>
@@ -25,9 +25,18 @@
 <div>
 <strong>Started date:</strong> February 2nd 2018</div>
 <div>
-<strong>Last Updated: </strong>March 1st 2018</div>
+<strong>Last Updated: </strong>March 19th 2018</div>
 <h3 style="font-style: italic;">Week 1-4</h3>
 <p>For the first 4 weeks, we worked on how to obtain financial data without having to manually download them online and place them in our database folder. For this to happen, we explored various API sources and decided on using <a href="http://bit.ly/2DXVpKM">Alpha Vantage API</a> to pull stocks data and their technical indicators in different time frames. In addition, we also use <a href="http://bit.ly/2E7srZP">OANDA API</a> to capture FOREX data (for later implications, right now we are focusing on stocks) with much more flexibility and availability compared to Alpha Vantage's stocks data.</p>
 
-<h3 style="font-style: italic;">Week 5- PRESENT</h3>
+<h3 style="font-style: italic;">Week 5-9</h3>
 <p> After obtaining data to apply to our program, we devised a blue print shown above, breaking down components of a basic trading engine. Now we will start working on different components, building them from scratch through Python and focusing on utilities applicable to backtesting purposes. Therefore, when we try constructing portfolio management or execution, it will most likely be very basic, to test out and ensure that the blueprint flows smoothly. Later on, we will start developing a more indepth and sample strategies, thus update our blueprint to dissect the inter-functionalities between different components.</p>
+
+<h3 style="font-style: italic;">Week 9-PRESENT</h3>
+<p> Successfully built all components above for the backtest purposes using event-driven programming. Debugged multiple times, using basic coded strategy of Buy and Hold. The portfolio is very basic, with no commission by default so far but you can go and fix it (for the version of the time this is updated). Performance analysis encompasses of simple calculation of total return and drawdown. However, historical csv data for desired market needs to be provided manually. In addition, dataframe only includes OHLC (Open High Low Close) of the market, not technical indicators just yet. </p>
+<p><strong>Our next goals are:</strong></ br>
+<ul><li>Incorporate data grabber developed from week 1-4 </li></ul>
+<ul><li>Develop more strategies to be implemented</li></ul>
+<ul><li>Add technical indicators to dataframe</li></ul>
+<ul><li>Further upgrade our portfolio management to provide more functionalities</li></ul>
+<p> We will only be focusing on those, trying to perfect the backtesting engine first before moving on to live trading.</p>
