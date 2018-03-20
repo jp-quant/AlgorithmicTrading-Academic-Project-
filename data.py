@@ -65,7 +65,24 @@ class HistoricalCSVData(DataFrame):
 
     def get_new_bar(self,symbol):
         for i in self.symbol_data[symbol]:
+            indexes = i[1].axes
+            o = None
+            h = None
+            l = None
+            c = None
+            v = None
+            for x in indexes[0]:
+                if 'open' in x.lower():
+                    o = x
+                if 'high' in x.lower():
+                    h = x
+                if 'low' in x.lower():
+                    l = x
+                if 'close' in x.lower():
+                    c = x
+                if 'volume' in x.lower():
+                    v = x
             yield tuple([symbol, datetime.datetime.strptime(i[0], '%Y-%m-%d %H:%M:%S'),
-                        i[1]['1. open'], i[1]['2. high'], i[1]['3. low'], i[1]['4. close'],i[1]['5. volume']])
+                        i[1][o], i[1][h], i[1][l], i[1][c],i[1][v]])
 
     
