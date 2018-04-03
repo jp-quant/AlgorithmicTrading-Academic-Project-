@@ -8,7 +8,7 @@ import portfolio
 import strategy
 import execution
 
-symbols = ['AAPL','CALD']
+symbols = ['AAPL','CALD','GOOG']
 csv_path = os.path.join(os.getcwd(),'database')
 
 Events = Queue.Queue()
@@ -16,8 +16,8 @@ Events = Queue.Queue()
 Broker = execution.BasicExecution(events = Events)
 DataFrame = data.HistoricalCSVData(events = Events, csv_path = csv_path, symbols = symbols)
 Portfolio = portfolio.NaivePortfolio(bars = DataFrame, events = Events, start_date = '3-5-2018')
-Strategy = strategy.BuyAndHoldStrategy(bars = DataFrame, events = Events)
-'''
+Strategy = strategy.SimpleSMACrossing(bars = DataFrame, events = Events, portfolio = Portfolio)
+
 while True:
     if DataFrame.continue_backtest == True:
         DataFrame.update_bars() # constantly spit out data from the symbol data generator created when initilizing DataFrame
@@ -40,4 +40,3 @@ while True:
                 Broker.execute_order(event)
             elif event.type == 'FILL':
                 Portfolio.update_fill(event)
-'''
