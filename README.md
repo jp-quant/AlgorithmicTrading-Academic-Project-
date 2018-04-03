@@ -1,5 +1,4 @@
 # Algorithmic Trading Program
-### Contributors: Jack Pham, Moritz Droste, Lauren Wong, Ajay Bhatia
 # Abstract
 <p> Trading the financial markets no longer embodies in the form of trading floor in NYSE, packed with suits and sweats, but rather automated through computers. Tycoon firms like Goldman Sachs is the number one High Frequency Trading firm, with the majority of its revenue come from automated trading aka algorithmic trading, at high frequency (fractions of a second)</p>
 <p> We are trying to build an easily accessible algorithmic trading program that allows users to backtest and live trade their trading strategies on any desired market. For the current system, we are using event-driven programming to develop our backtesting engine. This is so that the dataframe codes can be re-use to not just backtest, but live trade as well. In addition, by using event-driven backtests, we simulate a much more realistic scenerio of trading and preserve non-bias decisions making.</p>
