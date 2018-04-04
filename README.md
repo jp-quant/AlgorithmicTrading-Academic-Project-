@@ -34,8 +34,9 @@
 <h3 style="font-style: italic;">April</h3>
 <p> Successfully built all components above for the backtest purposes using event-driven programming. Debugged multiple times, using basic coded strategy of Buy and Hold. The portfolio is very basic, with no commission by default so far but you can go and fix it (for the version of the time this is updated). Performance analysis encompasses of simple calculation of total return and drawdown. However, historical csv data for desired market needs to be provided manually. In addition, dataframe only includes OHLC (Open High Low Close) of the market, not technical indicators just yet. </p>
 <p><strong>Our next goals are:</strong></ br>
-<ul><li>Incorporate data grabber developed from week 1-4 </li></ul>[COMPLETED]
-<ul><li>Develop more strategies to be implemented</li></ul>[DEVELOPED ONE]
-<ul><li>Add technical indicators to dataframe</li></ul>[COMPLETED]
-<ul><li>Further upgrade our portfolio management to provide more functionalities</li></ul>[IN PROGRESS]
+<ul><li>Incorporate data grabber developed from February [COMPLETED]</li></ul>
+<ul><li>Develop more strategies to be implemented [DEVELOPED ONE]</li></ul>
+<ul><li>Add technical indicators to dataframe [COMPLETED]</li></ul>
+<ul><li>Further upgrade our portfolio management to provide more functionalities [IN PROGRESS] </li></ul>
 <p> We will only be focusing on those, trying to perfect the backtesting engine first before moving on to live trading.</p>
+<p> IMPORTANT (April 3rd 2018): In improving portfolio management, I will try to incorporate Markov Chain model, inspired by a research paper by Henrik Hult and Jonas Kiessling called <a href="http://bit.ly/2EiwzBr"><cite>Algorithmic Trading with Markov Chain</cite></a></p>
