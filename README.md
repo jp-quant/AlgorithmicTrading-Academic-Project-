@@ -53,35 +53,35 @@ Now that everything is successfully initialized, we will start our backtesting p
 ```python
 '''--------------------------------DESCRIPTION----------------------------------
 OUTER LOOP: First we start updating our historical data from the database
-onto ourDataFrame. This is equivalent to a new bar popping
-up on your ticker chart. After the method is called, DataFrame
-will automatically place a MarketEvent into our event queue.
-This will be retreived firstly in our inner loop to process the
-newest data.
-INNER LOOP:  Start by retreiving the first event in our event queue, which is
-the MarketEvent placed from the outer loop. Portfolio and
-Strategy will then retreive MarketEvent with a stamp to update
-portfolio timestamp and calculate possible signals to generate
-SignalEvents to place into queue. This process continues on as
-SignalEvent would be passed on to Portfolio to generate an
-OrderEvent to be placed in queued. This OrderEvent will then
-be received by our Broker to fulfill the order. After the order
-is fulfilled, the Broker will place a FillEvent into the queue.
-This event queue will be retreived again by our portfolio.
-Portfolio will then update necessary informations such as
-assets values, positions, portfolio values, etc.
-This loop will continues on until all necessary performances
-are executed. This will prompts the Queue.empty to break
-out of the inner loop to return to the outer loop to update
-more bars .
+            onto ourDataFrame. This is equivalent to a new bar popping
+            up on your ticker chart. After the method is called, DataFrame
+            will automatically place a MarketEvent into our event queue.
+            This will be retreived firstly in our inner loop to process the
+            newest data.
+INNER LOOP: Start by retreiving the first event in our event queue, which is
+            the MarketEvent placed from the outer loop. Portfolio and
+            Strategy will then retreive MarketEvent with a stamp to update
+            portfolio timestamp and calculate possible signals to generate
+            SignalEvents to place into queue. This process continues on as
+            SignalEvent would be passed on to Portfolio to generate an
+            OrderEvent to be placed in queued. This OrderEvent will then
+            be received by our Broker to fulfill the order. After the order
+            is fulfilled, the Broker will place a FillEvent into the queue.
+            This event queue will be retreived again by our portfolio.
+            Portfolio will then update necessary informations such as
+            assets values, positions, portfolio values, etc.
+            This loop will continues on until all necessary performances
+            are executed. This will prompts the Queue.empty to break
+            out of the inner loop to return to the outer loop to update
+            more bars.
 This goes on until all bars are updated and backtest is complete.
 ---------------------------------------------------------------------------------------'''
 #------OUTER LOOP------#
 while True:
-	if DataFrame.continue_backtest == True:
-		DataFrame.update_bars()
+  if DataFrame.continue_backtest == True:
+    DataFrame.update_bars()
 	else:
-		break
+	  break
 #-------INNER LOOP-------#
 	while True:
 		try:
