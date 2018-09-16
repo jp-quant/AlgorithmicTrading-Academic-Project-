@@ -1,16 +1,11 @@
 
 # Algorithmic Trading Program
 
-------------
 
-### Introduction
-------------
+## Introduction
 Algorithmic trading allows individuals to rid fundamental and psychological hunches, or guessings, when trading any financial markets, stocks, bonds, forex, options, etc. With the extensive and flexible event-driven structure of this project, users can craft new customary components, such as portfolio, dataframe or algo strategies, and implement them to backtest on any desired market, as long as time series data is available. This program is an ongoing and continuously improving database, with potentially endless implementations to be added.
 
-------------
-### Blueprint
-------------
-
+## Blueprint
 Our engine is structured to be an event-driven system. Although slower than vectorised backtesting structure, by doing this, in addition to ridding psychological hunches and guessing, written codes can be recycled to adapt to live trading in the future. Components are listed sequentially below, ascending from most basic to complex. As each component inherits the ones above, the last component, Strategy, is where most quantitative work reside.
 
 1. **EVENT:** This is the simplest yet key component in our engine. Due to the nature of event-driven structure, we require a fundamental class that could identify what action to proceed taking in an event loop. There are different event types, noted in event.py: MarketEvent, SignalEvent, OrderEvent, FillEvent.
@@ -25,15 +20,14 @@ Our engine is structured to be an event-driven system. Although slower than vect
 
 The goal of trading financial markets quantitatively is to continuously perform necessary calculations and adjustments in position sizings, allocations, market predictions and risk management through market analysis, etc. This imply the majority of quantitative decision making and calculations reside within Strategy & Portfolio components. Future live testing implementations will require major updates on the Broker component.
 
-------------
-###  Getting Started/ How-To-Use
-------------
--  ** REQUIREMENTS**
+##  Getting Started/ How-To-Use
+**1. REQUIREMENTS**
 - If you do not have Python 3.7, download it [here](https://www.python.org/downloads/release/python-370/ "here").
 - In terminal, navigate to project directory and type `pip install -r requirements.txt` to install all required modules for usage.
+
 ------------
 
-1. ** backtest.py ** - (*Run to start backtesting process*)
+**2. backtest.py** - (*Run to start backtesting process*)
 After importing all necessary components and requirement modules, we will first set our `symbols` to trade, and `csv_path` to upload financial data and update if necessary.
 ```python
 # symbols in list form with each asset name in string
