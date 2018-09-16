@@ -78,10 +78,10 @@ This goes on until all bars are updated and backtest is complete.
 ---------------------------------------------------------------------------------------'''
 #------OUTER LOOP------#
 while True:
-  if DataFrame.continue_backtest == True:
-    DataFrame.update_bars()
+	if DataFrame.continue_backtest == True:
+  		DataFrame.update_bars()
 	else:
-	  break
+	 	break
 #-------INNER LOOP-------#
 	while True:
 		try:
