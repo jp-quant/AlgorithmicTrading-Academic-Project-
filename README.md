@@ -1,5 +1,4 @@
 # Algorithmic Trading Engine
-### Creator: Jack Pham
 # Introduction
 <p> Algo trading allows individuals to rid fundamental and psychological hunches, or guessings, when trading any financial markets. With an extensive and flexible structure, users can craft new essential components, such as portfolio, dataframe or event strategies/algorithms, and implement them to backtest on any desired market, as long as time series data is available. </p>
 <p> This program is an ongoing and continuously improving database, with potentially endless implementations to be added.</p>
