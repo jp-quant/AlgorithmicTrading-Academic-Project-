@@ -25,8 +25,8 @@ from event import MarketEvent
 ##                DATA = PANDAS DATAFRAME UPLOADED WHEN BEING INITIALIZED
 ##                THIS DATA FRAME IS INDEXED BY THE TIMESTAMP EXTRACTED WHEN WE INITIZLIED THE DATAFRAME
 ##LATEST_SYMBOL_DATA = SAME AS SYMBOL_DATA BUT THIS IS FOR EVENT DRIVEN PURPOSES
-##                    DATA = LIST OF TUPLES
-##                    EACH TUPLE = (SYMBOL(STRING), INFORMATION(PANDAS SERIES))
+##                    DATA = LIST OF SERIES
+##                    EACH SERIES = BAR DATA WITH ITS NAME AS STAMP
 ##
 ##IMPORTANT------
 ##---->>> DATA.PY AND STRATEGY.PY ARE THEIR OWN SECTOR.
@@ -34,7 +34,7 @@ from event import MarketEvent
 ##---->>> SO YOU CAN CREATE YOUR OWN STRATEGY, AS TO HOW YOU WOULD HANDLE THEM
 ##---->>>>>>>>>---->>> MAIN POINT--> EVERY TIME YOU CALL THE ABSTRACT METHOD  
 ##                                    GET_LATEST_BARS, YOU WILL RECEIVE
-##                                    A LIST OF TUPLE(S), EX: (TUPLE1, TUPLE2), FORMAT EXPLAINED ABOVE
+##                                    A LIST OF SERIES AS BARS, EX: [BAR1, BAR2], FORMAT EXPLAINED ABOVE
 ##                                    YOU WILL THEN HANDLE THE DATA YOU HAVE DESIGNATED TO RECEIVE
 ##                                    TO PERFORM YOUR CALCULATIONS, THEN PUT THE SIGNAL NEEDED IN TO EVENT QUEUE
 ##
@@ -57,7 +57,7 @@ class DataFrame(object):
         raise NotImplementedError('implement update_bars() to proceed')
     
     @abstractmethod
-    #use to add sma data to the dataframe
+    #use to add additional data to the dataframe
     def add_data(self,symbols,periods,sma,ewma,cumreturns,hpfilter):
         raise NotImplementedError('implement add_sma to proceed') 
 
