@@ -1,10 +1,10 @@
 import datetime
-import Queue
+import queue
 
 from abc import ABCMeta, abstractmethod
 from event import FillEvent, OrderEvent
 
-class Execution(object):
+class Broker(object):
 
     __metaclass__ = ABCMeta
 
@@ -13,14 +13,14 @@ class Execution(object):
         raise NotImplementedError('Implement execute_order before proceeding')
     
 
-class BasicExecution(Execution):
+class BasicBroker(Broker):
 
     def __init__(self, events):
         self.events = events
         
     def execute_order(self, event):
         if event.type == 'ORDER':
-            fill_event = FillEvent(datetime.datetime.utcnow(),
+            fill_event = FillEvent(event.stamp,
                             event.symbol, 'BROKER', event.quantity,
-                            event.direction, None)
+                            event.order_type)
             self.events.put(fill_event)

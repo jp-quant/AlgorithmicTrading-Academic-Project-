@@ -6,151 +6,122 @@ from math import floor
 from abc import ABCMeta, abstractmethod
 
 from event import FillEvent, OrderEvent
-from performance import create_sharpe_ratio, create_drawdowns
 
 class Portfolio(object):
 
     __metaclass__  = ABCMeta
 
     @abstractmethod
+    def update_market(self,event):
+        raise NotImplementedError('Implement update_market() to continue')
+
+    @abstractmethod
     def update_signal(self,event):
         raise NotImplementedError('Implement update_signal() to continue')
     
     @abstractmethod
-    def update_fill(self,event):
+    def update_portfolio(self,event):
         raise NotImplementedError('Implement update_fill() to continue')
-    
-    # This is the NaivePortfolio class. 
-    # It is designed to handle position sizing and current holdings,
-    # but will carry out trading orders in a "dumb" manner by simply
-    # sending them directly to the brokerage with a predetermined fixed quantity size, irrespective of cash held. 
 
-class NaivePortfolio(Portfolio):
 
-    def __init__(self, bars, events, start_date, initial_balance = 100000.0):
+# ------------------------------------------------------------------------------------------------------
+# SAMPLE PORTFOLIO (written by Jack)
+# accounting future integration to live trading
+# ------------------------------------------------------------------------------------------------------
+class SamplePortfolio(Portfolio):
 
+    def __init__(self, bars, events, initial_balance = 1000.0):
         self.bars = bars
-        self.equity_curve = None
         self.events = events
         self.symbols = self.bars.symbols
-        self.start_date = start_date
         self.initial_balance = initial_balance
-        self.all_positions = self.construct_all_positions()
-        self.current_positions = {symbol: 0.0 for symbol in self.symbols}
-        self.all_holdings = self.construct_all_holdings()
-        self.current_holdings = self.construct_current_holdings()
-        
-    def update_fill(self,event):
-        if event.type == 'FILL':
-            self.update_positions(event)
-            self.update_holdings(event)
+        self.cash_balance = initial_balance
+        # all_holdings tracks all holdings, indexed over time
+        self.all_holdings = {}
+        self.current_holdings = {}
+        self.daily_logged_stamps = [] # for logging to drop when performing analysis for logging
+        self.portfolio_value = pd.DataFrame(columns =self.symbols+['Cash Balance','Total Value']) # indexed over time
+        for s in self.symbols:
+            self.all_holdings[s] = pd.DataFrame(columns = ['close','position','value'])
+            self.current_holdings[s] = pd.Series(data = 0.0, index =['close','position','value'])
 
-    def construct_all_positions(self):
-        d = {symbol: 0.0 for symbol in self.symbols}
-        d['datetime'] = self.start_date
-        return [d]
-        
-    def construct_all_holdings(self):
-        d = {symbol: 0.0 for symbol in self.symbols}
-        d['datetime'] = self.start_date
-        d['cash'] = self.initial_balance
-        d['commission'] = 0.0
-        d['total'] = self.initial_balance
-        return [d]
+    def update_portfolio(self,event):
+        # updating portfolio after order was executed
+        # position---> (-) = SELL, (+) = BUY, 0 = No position
+        if event.order_type == 'BUY':
+            self.current_holdings[event.symbol]['position'] += event.quantity
+            self.current_holdings[event.symbol]['value'] = self.current_holdings[event.symbol]['close']*self.current_holdings[event.symbol]['position']
+            self.cash_balance -= event.quantity*self.current_holdings[event.symbol]['close']
+        elif event.order_type == 'SELL':
+            self.current_holdings[event.symbol]['position'] -= event.quantity
+            self.current_holdings[event.symbol]['value'] = self.current_holdings[event.symbol]['close']*self.current_holdings[event.symbol]['position']
+            self.cash_balance += event.quantity*self.current_holdings[event.symbol]['close']
+        else:
+            pass # NO BUY OR SELL WAS MADE AND WE ALREADY UPDATED PORTFOLIO VALUE, THROUGH UPDATE_MARET(), AS SOON AS THE NEW BAR WAS LAUNCH,
+        if (self.all_holdings[event.symbol].empty) or (event.stamp not in self.all_holdings[event.symbol].index):
+            self.all_holdings[event.symbol] = self.all_holdings[event.symbol].append(self.current_holdings[event.symbol])
+        if (self.portfolio_value.empty) or (event.stamp not in self.portfolio_value.index):
+            # if timestamp isn't in portfolio_value, meaning it's new so we'll craft a new data row to append
+            values = []
+            for s in self.symbols:
+                values.append(self.current_holdings[s]['value'])
+            data = pd.Series(data = values,index = self.symbols,name=self.bars.latest_stamps[-1]) # set new index as latest stamp
+            data['Cash Balance'] = self.cash_balance
+            data['Total Value'] = data.sum()
+            self.portfolio_value = self.portfolio_value.append(data)
+        elif event.stamp in self.portfolio_value.index:
+            self.portfolio_value.at[event.stamp,event.symbol] = self.current_holdings[event.symbol]['value']
+            self.portfolio_value.at[event.stamp,'Cash Balance'] = self.cash_balance
+            total_value = self.portfolio_value.loc[event.stamp].drop('Total Value').sum()
+            self.portfolio_value.at[event.stamp,'Total Value'] = total_value
 
-    def construct_current_holdings(self):
-        d = d = {symbol: 0.0 for symbol in self.symbols}
-        d['cash'] = self.initial_balance
-        d['commission'] = 0.0
-        d['total'] = self.initial_balance
-        return d
-        
-    def update_timeindex(self,event):
-        bars = {symbol: self.bars.get_latest_bars(symbol,N=1) for symbol in self.symbols}
-        positions = {symbol: self.current_positions[symbol] for symbol in self.symbols}
-        datetime = bars[self.symbols[0]][0][1]
-        positions['datetime'] = datetime
-        self.all_positions.append(positions)
 
-        dh = {symbol: 0 for symbol in self.symbols}
-        dh['datetime'] = bars[self.symbols[0]][0][1]
-        dh['cash'] = self.current_holdings['cash']
-        dh['commission'] = self.current_holdings['commission']
-        dh['total'] = self.current_holdings['cash']
-
-        for i in self.symbols:
-            market_value = self.current_positions[i] * bars[i][0][5]
-            dh[i] = market_value
-            dh['total'] += market_value #total represents the total amount
-
-        self.all_holdings.append(dh)
-
-    def update_positions(self, fill):
-        fill_dir = 0
-        if fill.direction == 'BUY':
-            fill_dir = 1
-        if fill.direction == 'SELL':
-            fill_dir = -1
-        self.current_positions[fill.symbol] += fill_dir*fill.quantity
-
-    def update_holdings(self,fill):
-        fill_dir = 0
-        if fill.direction == 'BUY':
-            fill_dir = 1
-        if fill.direction == 'SELL':
-            fill_dir = -1
-        fill_cost = self.bars.get_latest_bars(fill.symbol)[0][5]  # Close price
-        cost = fill_dir * fill_cost * fill.quantity
-        self.current_holdings[fill.symbol] += cost
-        self.current_holdings['commission'] += fill.commission # keep an eye on commission if there really is one
-        self.current_holdings['cash'] -= (cost + fill.commission)
-        self.current_holdings['total'] -= (cost + fill.commission)
-        
-    def generate_naive_order(self,signal):
-        order = None
-            
-        symbol = signal.symbol
-        direction = signal.signal_type
-        strength = 1.05
-            
-        market_quantity = floor(100 * strength) # for stock this is the amount of shares
-        current_quantity = self.current_positions[symbol]
-        order_type = 'MKT'
-
-        if direction == 'LONG' and current_quantity == 0:
-            order = OrderEvent(symbol, order_type, market_quantity, 'BUY')
-        if direction == 'SHORT' and current_quantity == 0:
-            order = OrderEvent(symbol, order_type, market_quantity, 'SELL')
-        if direction == 'EXIT' and current_quantity > 0:
-            order = OrderEvent(symbol, order_type, abs(current_quantity), 'SELL')
-        if direction == 'EXIT' and current_quantity < 0 :
-            order = OrderEvent(symbol, order_type, abs(current_quantity), 'BUY')
-        print `order`
+    def generate_order(self,event):
+        # strategy has access to all components except execution
+        order = OrderEvent(event.symbol,event.stamp,event.action,event.quantity)
         return order
-        
+
     def update_signal(self,event):
         if event.type == 'SIGNAL':
-            order_event = self.generate_naive_order(event)
-            self.events.put(order_event)
-        
-    def create_equity_curve_dataframe(self):
-        curve = pd.DataFrame(self.all_holdings)
-        curve.set_index('datetime', inplace = True)
-        curve['returns'] = curve['total'].pct_change()
-        curve['equity_curve'] = (1.0 + curve['returns']).cumprod()
-        self.equity_curve = curve
-        
-    def output_summary_stats(self):
-        self.create_equity_curve_dataframe()
-        total_return = self.equity_curve['equity_curve'][-1]
-        returns = self.equity_curve['returns']
-        pnl = self.equity_curve['equity_curve']
+            order = self.generate_order(event)
+            self.events.put(order)
 
-        sharpe_ratio = create_sharpe_ratio(returns)
-        max_drawdown, drawdown_duration = create_drawdowns(pnl)
+    def update_market(self,event):
+        # Method accounts for more than one bar missing
+        # PURPOSE: add missing stamps between our current holdings and dataframe
+        for s in self.symbols:
+            bar = self.bars.get_latest_bars(s,N=1)[-1]
+            self.current_holdings[s].name = bar.name
+            self.current_holdings[s]['close'] = bar['close']
+            self.current_holdings[s]['value'] = self.current_holdings[s]['position']*bar['close']
+        self.daily_portfolio_logging()
 
-        stats = [('Total Returns', '%0.2f%%' % ((total_return - 1.0) * 100.0)),
-                  ('Sharpe Ratio', '%0.2f' % sharpe_ratio),
-                  ('Max Drawdown', '%0.2f%%' % (max_drawdown * 100.0)),
-                  ('Drawdown Duration', str(drawdown_duration))]
-        return stats
+    def daily_portfolio_logging(self):
+        # serve as a function to analyze latest stamps to determine whether to spit out a printed report or not
+        # saves logs to  self.daily_logged_stamps
+        latest_stamps = self.bars.latest_stamps
+        if len(latest_stamps) == 1: # first bar
+            pass
+        elif datetime.datetime.strptime(latest_stamps[-1],'%Y-%m-%d %H:%M:%S').date() == datetime.datetime.strptime(latest_stamps[-2],'%Y-%m-%d %H:%M:%S').date():
+            # if we're still in the same day, we won't do anything
+            pass
+        elif datetime.datetime.strptime(latest_stamps[-1],'%Y-%m-%d %H:%M:%S').date() != datetime.datetime.strptime(latest_stamps[-2],'%Y-%m-%d %H:%M:%S').date():
+            # if we're in the next day, we'll print our report
+            if len(self.daily_logged_stamps) == 0:
+                stamps_to_log = latest_stamps[:-1] # exclude latest stamp since it's in the next day
+                self.daily_logged_stamps.append(stamps_to_log) #assign /create logged stamps record
+            else:
+                to_log = []
+                for i in self.daily_logged_stamps:
+                    to_log += i
+                stamps_to_log = pd.Index(latest_stamps[:-1]).drop(pd.Index(to_log))
+                self.daily_logged_stamps.append(list(stamps_to_log)) # update logged_stamps for future updates
+            portfolio_value = self.portfolio_value.loc[stamps_to_log]
+            total_value = portfolio_value['Total Value'].describe()
+            stamp_header = datetime.datetime.strptime(latest_stamps[-2],'%Y-%m-%d %H:%M:%S').strftime("%B %d, %Y")
+            print('<<-------| PORTFOLIO VALUE REPORT:',stamp_header,'|------->>')
+            print(total_value)
+
+
+        
+        
