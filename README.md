@@ -3,7 +3,13 @@
 <p> Algo trading allows individuals to rid fundamental and psychological hunches, or guessings, when trading any financial markets. With an extensive and flexible structure, users can craft new essential components, such as portfolio, dataframe or event strategies/algorithms, and implement them to backtest on any desired market, as long as time series data is available. </p>
 <p> This program is an ongoing and continuously improving database, with potentially endless implementations to be added.</p>
 
-# Event-Driven Blueprint
+
+# Getting Started
+<p> The engine was coded in Python 3.7, so make sure your Python version is up to date. 
+
+
+
+# Description
 <p> Our engine is structured to be an event-driven system. Although slower than vectorised backtesting structure, by doing this, in addition to ridding psychological hunches and guessing, written codes can be recycled to adapt to live trading in the future. </p>
 <p> Components are listed sequentially below, ascending from most basic to complex. As each component inherits the ones above, the last component, Strategy, is where most quantitative work reside.</p>
 <ul>
