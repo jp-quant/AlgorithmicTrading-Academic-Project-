@@ -4,11 +4,18 @@
 
 ## Table of Contents
  - [Introduction](https://github.com/xphysics/AlgorithmicTrading#introduction)
+ - [Features Log](https://github.com/xphysics/AlgorithmicTrading#features-log)
  - [General Blueprint](https://github.com/xphysics/AlgorithmicTrading#blueprint)
  - [Getting Started/How-To-Use](https://github.com/xphysics/AlgorithmicTrading#getting-started-how-to-use)
 
 ## Introduction
 Algorithmic trading allows individuals to rid fundamental and psychological hunches, or guessings, when trading any financial markets, stocks, bonds, forex, options, etc. With the extensive and flexible event-driven structure of this project, users can craft new customary components, such as portfolio, dataframe or algo strategies, and implement them to backtest on any desired market, as long as time series data is available. This program is an ongoing and continuously improving database, with potentially endless implementations to be added.
+
+## Features Log
+ - Only focus on backtesting engine first, live trading will be implemented in the future with more updated Broker
+ - Only download and update stocks by using included AlphaVantage API Key (no options, forex, etc yet)
+ - If you have csv data on other markets to backtest on, feel free to incorporate it.
+ - *Current Strategy*: Daily portfolio allocations optimizations through maximizing sharpe ratio across all holdings
 
 ## General Blueprint
 Our engine is structured to be an event-driven system. Although slower than vectorised backtesting structure, by doing this, in addition to ridding psychological hunches and guessing, written codes can be recycled to adapt to live trading in the future. Components are listed sequentially below, ascending from most basic to complex. As each component inherits the ones above, the last component, Strategy, is where most quantitative work reside.
@@ -25,14 +32,14 @@ Our engine is structured to be an event-driven system. Although slower than vect
 
 The goal of trading financial markets quantitatively is to continuously perform necessary calculations and adjustments in position sizings, allocations, market predictions and risk management through market analysis, etc. This imply the majority of quantitative decision making and calculations reside within Strategy & Portfolio components. Future live testing implementations will require major updates on the Broker component.
 
-##  Getting Started/ How-To-Use
-##### 1. REQUIREMENTS
+##  Components Breakdown/How-To-Use
+#### Getting Started
 - If you do not have Python 3.7, download it [here](https://www.python.org/downloads/release/python-370/ "here").
 - In terminal, navigate to project directory and type `pip install -r requirements.txt` to install all required modules for usage.
 
 ------------
 
-##### 2. BACKTEST.PY - (*Run to start backtesting process*)
+#### 1. BACKTEST.PY - (Run to start backtesting process)
 After importing all necessary components and requirement modules, we will first set our `symbols` to trade, and `csv_path` to upload financial data and update if necessary.
 ```python
 # symbols in list form with each asset name in string
@@ -99,4 +106,90 @@ while True:
 			elif event.type == 'FILL':
 				Portfolio.update_portfolio(event)
 ```
-[MORE INSTRUCTIONS COMING SOON]
+#### 2. EVENT.PY
+As an event-driven backtesting engine, we require an Event class that creates and identifies different event queues.
+There are 4 different events to be identified by our components:
+ **1. MarketEvent**: placed in queue by DataFrame as soon as new bars have been updated. The event only needs to contain the timestamp which signifies the latest bars' timestamp. Retreived by Portfolio to update its current holdings and values reflected by the new prices. Strategy will also retreive it to calculate potential signals to be placed in queue.
+```python
+class MarketEvent:
+
+    def __init__(self, stamp):
+        self.type = 'MARKET'
+        self.stamp = stamp
+```
+ **2. SignalEvent**: placed in queue by Strategy after it performed necessary calculations needed after the latest bars are updated. This will thus be retreived by Portfolio to generate orders. The event needs to contain information needed to generate orders, including the timestamp, symbol, action and quantity. Meaning that each asset has its own event rotation queue as our engine will iterate through all of desired assets to trade.
+```python     
+class SignalEvent:
+
+    def __init__(self,symbol,stamp,action = None,quantity = None):
+        self.type = 'SIGNAL'
+        self.symbol = symbol
+        self.stamp = stamp
+        self.action = action # BUY, SELL, EXIT
+        self.quantity = quantity
+```
+ **3. OrderEvent**: placed in queue by Portfolio after it retreived the SignalEvent. Portfolio will then generate the order necessary and place them into queue as OrderEvents, which will be retreived by our Broker to execute the trade. OrderEvent therefore must include informations for the Broker to perform its task. We also configure the way OrderEvent will be printed whenever called necessary.
+```python
+class OrderEvent:
+
+    def __init__(self,symbol,stamp,order_type,quantity):
+        self.type = 'ORDER'
+        self.symbol = symbol
+        self.quantity = quantity
+        self.order_type = order_type
+        self.stamp = stamp
+
+    def __repr__(self):
+        return "ORDER --> Symbol=%s, Type=%s, Quantity=%s TimeStamp= %s " % (self.symbol, self.order_type, self.quantity, self.stamp)
+```
+ **4. FillEvent**: placed in queue by Broker after the order(s) desired have been executed. This FillEvent will be retreived by our Portfolio to update all holdings trackings and portfolio values, again, reflected by the changes made through the orders that were placed.
+```python
+class FillEvent:
+    def __init__(self,stamp,symbol,exchange,
+                quantity,order_type,commission=None):
+                self.type = 'FILL'
+                self.stamp = stamp
+                self.symbol = symbol
+                self.exchange = exchange
+                self.quantity = quantity
+                self.order_type = order_type
+
+                if commission is None:
+                    self.commission = self.calculate_ib_commission()
+                else:
+                    self.commission = commission
+
+    def calculate_ib_commission(self):
+    # OPTIONAL FOR NOW: OUR CURRENT MODEL JUST ASSUME NO COMMISSION REQUIRED FOR SIMPLICITY
+            return 1.3
+```
+#### 3. BROKER.PY
+At the moment, our broker class is fairly simple as it will be responsible for "executing" orders, basically taking in OrderEvents and placing FillEvents into queue.
+First, we'll define a general Broker class to enforce abstract method(s) to be implemented and called. We'll also do this for other components as well. This is to enforce the general blueprint of how our backtesting engine work, therefore any new versions created (ex: Live Trading Broker) will also have to contain those required methods.
+```python
+class Broker(object):
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def execute_order(self, event):
+        raise NotImplementedError('Implement execute_order before proceeding')
+```
+Now that we have our execute_order() defined as an abstract method. We will proceed to make any broker we want, inherting the general Broker class we just created. In this case, we will create our BasicBroker with the abstract method.
+```python
+class BasicBroker(Broker):
+
+    def __init__(self, events):
+        self.events = events
+        
+    def execute_order(self, event):
+        if event.type == 'ORDER':
+            fill_event = FillEvent(event.stamp,
+                            event.symbol, 'BROKER', event.quantity,
+                            event.order_type)
+            self.events.put(fill_event)
+```
+Pretty straight forward, the Broker initializes our Event Queue, to "put" events in, as its only required argument. It contains the abstract method required to take in specific OrderEvent and fulfill it, thus creating a FillEvent and put it in the queue.
+
+### 4. DATA.PY
+Now we will start on one of our essential components. [COMING SOON]
