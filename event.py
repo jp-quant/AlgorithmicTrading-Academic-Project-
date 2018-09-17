@@ -1,19 +1,12 @@
-class Event(object):
-    pass
-
-
-# ALL EVENTS CONTAIN TIMESTAMP
-
-
 # MARKET EVENT = NEW DATAPOINT IS RELEASED/NEW TICK APPEARED ON SCREEN
-class MarketEvent(Event):
+class MarketEvent:
 
     def __init__(self, stamp):
         self.type = 'MARKET'
         self.stamp = stamp
 
 # SIGNAL EVENT: NEW SIGNAL AVAILABLE FROM STRATEGY, TELLING PORTFOLIO TO BUY OR SELL AT TIMESTAMP       
-class SignalEvent(Event):
+class SignalEvent:
 
     def __init__(self,symbol,stamp,action = None,quantity = None):
         self.type = 'SIGNAL'
@@ -23,7 +16,7 @@ class SignalEvent(Event):
         self.quantity = quantity
 
 # ORDER EVENT: NEW ORDER PLACED BY PORTFOLIO
-class OrderEvent(Event):
+class OrderEvent:
 
     def __init__(self,symbol,stamp,order_type,quantity):
         self.type = 'ORDER'
@@ -36,7 +29,7 @@ class OrderEvent(Event):
         return "ORDER --> Symbol=%s, Type=%s, Quantity=%s TimeStamp= %s " % (self.symbol, self.order_type, self.quantity, self.stamp)
 
 # FILL EVENT: AN ORDER WAS PLACED
-class FillEvent(Event):
+class FillEvent:
     def __init__(self,stamp,symbol,exchange,
                 quantity,order_type,commission=None):
                 self.type = 'FILL'
