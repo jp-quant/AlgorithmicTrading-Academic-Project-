@@ -6,7 +6,11 @@
  - [Introduction](https://github.com/xphysics/AlgorithmicTrading#introduction)
  - [Features Log](https://github.com/xphysics/AlgorithmicTrading#features-log)
  - [General Blueprint](https://github.com/xphysics/AlgorithmicTrading#blueprint)
- - [Getting Started/How-To-Use](https://github.com/xphysics/AlgorithmicTrading#getting-started-how-to-use)
+ - [Components Breakdown/How-To-Use](https://github.com/xphysics/AlgorithmicTrading#components-breakdownhow-to-use)
+   - [backtest.py](https://github.com/xphysics/AlgorithmicTrading#1-backtestpy---run-to-start-backtesting-process)
+   - [event.py](https://github.com/xphysics/AlgorithmicTrading#2-eventpy)
+   - [broker.py](https://github.com/xphysics/AlgorithmicTrading#3-brokerpy)
+   - [COMING SOON...]
 
 ## Introduction
 Algorithmic trading allows individuals to rid fundamental and psychological hunches, or guessings, when trading any financial markets, stocks, bonds, forex, options, etc. With the extensive and flexible event-driven structure of this project, users can craft new customary components, such as portfolio, dataframe or algo strategies, and implement them to backtest on any desired market, as long as time series data is available. This program is an ongoing and continuously improving database, with potentially endless implementations to be added.
