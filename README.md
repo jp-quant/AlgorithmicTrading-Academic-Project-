@@ -370,23 +370,23 @@ Now that we understand how this works, we will write our abstract functions.
         return new_bar
 	#return a pandas series to be appended to latest_symbol_data
 	
-	def update_bars(self,stop_at=None):
+    def update_bars(self,stop_at=None):
         # before updating bars, we need to grab the next timestamp and delete it from our existing ones
         try:
-			# stamps are in monotonically increasing order, we will grab the first index as the next bar
+            # stamps are in monotonically increasing order, we will grab the first index as the next bar
             stamp = self.timestamp[0]
 			
-			# append the stamp to latest_stamps
+            # append the stamp to latest_stamps
             self.latest_stamps.append(stamp)
 			
-			# drop if from our timestamp track
+            # drop if from our timestamp track
             self.timestamp = self.timestamp.drop(stamp)
 			
-			# Now that have the stamp, we will use get_new_bar to grab the bar correspond to the stamp
+            # Now that have the stamp, we will use get_new_bar to grab the bar correspond to the stamp
             for i in self.symbols:
                 bar = self.get_new_bar(i,stamp)
                 if bar is not None:
-					# append new bar to latest_symbol_data
+                    # append new bar to latest_symbol_data
                     self.latest_symbol_data[i].append(bar)
 			
             # IMPORTANT: THIS WILL THEN PLACE A MARKETEVENT WITH THE NEWEST STAMP IN QUEUE
@@ -407,7 +407,7 @@ Now that we understand how this works, we will write our abstract functions.
             self.continue_backtest = False
             print('BACKTEST COMPLETE.')
 			
-	def get_latest_bars(self, symbol, N=1):
+    def get_latest_bars(self, symbol, N=1):
         try:
             bars_list = self.latest_symbol_data[symbol]
         except KeyError:
