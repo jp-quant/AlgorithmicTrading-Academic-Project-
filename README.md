@@ -278,8 +278,7 @@ First we'll perform check to whether the csv data exists or not,. This is an int
 			self.symbol_data[i] = pd.read_csv(os.path.join(self.csv_path,
 											'{file_name}.{file_extension}'.format(file_name=i,
                                         	file_extension='csv')),
-                                        	header = 0, index_col = 0)
-											
+                                        	header = 0, index_col = 0)					
 			self.symbol_data[i].columns = columns # clean up columns by re-assigning it 
 			self.symbol_data[i] = self.symbol_data[i].sort_index() #sort index to make sure it's monotonic
 			if indexes is None:
