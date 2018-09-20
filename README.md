@@ -282,12 +282,12 @@ After we check data availability and perform check_and_update if prompted (we wi
 											
 			self.symbol_data[i].columns = columns # clean up columns by re-assigning it 
 			self.symbol_data[i] = self.symbol_data[i].sort_index() #sort index to make sure it's monotonic
-            if indexes is None:
+			if indexes is None:
 				indexes = self.symbol_data[i].index
-            else:
-                indexes.union(self.symbol_data[i].index)
-            self.latest_symbol_data[i] = [] #set latest symbol data in to a list to be appended later
-        self.timestamp = indexes
+			else:
+				indexes.union(self.symbol_data[i].index)
+			self.latest_symbol_data[i] = [] #set latest symbol data in to a list to be appended later
+		self.timestamp = indexes
         for i in self.symbols:
             self.symbol_data[i] = self.symbol_data[i].reindex(index=indexes,method='pad')
 ```
