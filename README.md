@@ -406,7 +406,8 @@ Now that we understand how this works, we will write our abstract functions.
         except IndexError:
             self.continue_backtest = False
             print('BACKTEST COMPLETE.')
-			
+    
+    # This is being used in other components to grab latest bars from latest_symbol_data		
     def get_latest_bars(self, symbol, N=1):
         try:
             bars_list = self.latest_symbol_data[symbol]
@@ -420,8 +421,8 @@ Now that we understand how this works, we will write our abstract functions.
             elif N > 0:
                 return bars_list[-N:]
 	
-	# [OPTIONAL]
-	def add_data(self,symbols,periods=None,sma=False,ewma=False,
+    # [OPTIONAL]
+    def add_data(self,symbols,periods=None,sma=False,ewma=False,
                 arith_ret=False,hpfilter=False,log_ret=False,d1close=False,d2close=False):
         # use to add any additional calculations for backtesting data during initlization
         # all calculations are performed on close price, usually called by Strategy's initialization
