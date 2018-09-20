@@ -271,9 +271,9 @@ First we'll perform check to whether the csv data exists or not,. This is an int
             self.check_and_update(symbols=self.symbols) # this is another functions we will go over next
         else:
             print('Dataframe launched with pre-existing data')
-```
-After we check data availability and perform check_and_update if prompted (we will go over it next), we will go ahead and load up our csv data to the dataframe.
-```python
+            
+        # After we check data availability and perform check_and_update if prompted (we will go over it next)
+        # we will go ahead and load up our csv data to the dataframe.
 		for i in self.symbols:
 			self.symbol_data[i] = pd.read_csv(os.path.join(self.csv_path,
 											'{file_name}.{file_extension}'.format(file_name=i,
