@@ -226,7 +226,7 @@ Now that we're done with setting up a general DataFrame class for our template t
 Let's first tell what our DataFrame to initialize when being called with given arguments: events, csv_path, and symbols. All of which were already defined above.
 ```python
 class CSVData(DataFrame):
-	def __init__(self, events, csv_path, symbols):
+    def __init__(self, events, csv_path, symbols):
         self.events = events
         self.csv_path = csv_path
         self.symbols = symbols
@@ -242,9 +242,10 @@ class CSVData(DataFrame):
 The last line of our initialization process is load_csv(), a function which we will go over next. This function basically is completely responsible for uploading historical financial data on desired symbols (stocks) from the csv_path defined. Meaning that regardless of whether we have data for it or not, our DataFrame will automatically download desired data using Alpha Vantage free API, which is included in the repositories.
 
 First we'll perform check to whether the csv data exists or not,. This is an interactive process and the only one we need as it will be prompted the moment backtest.py runs. If there's no csv data available for certain symbols, it will print them out. Finally, it will ask the user if he, or she, want to perform Check and Update, which we will go over next.
+
 ```python
-	def load_csv(self):
-		indexes = None
+    def load_csv(self):
+        indexes = None
 		columns = ['open','high','low','close','volume']
         not_seen = []
         for i in self.symbols:
