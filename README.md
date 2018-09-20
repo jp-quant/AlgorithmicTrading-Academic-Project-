@@ -226,7 +226,7 @@ Now that we're done with setting up a general DataFrame class for our template t
 Let's first tell what our DataFrame to initialize when being called with given arguments: events, csv_path, and symbols. All of which were already defined above.
 ```python
 class CSVData(DataFrame):
-    def __init__(self, events, csv_path, symbols):
+	def __init__(self, events, csv_path, symbols):
         self.events = events
         self.csv_path = csv_path
         self.symbols = symbols
@@ -275,9 +275,10 @@ After we check data availability and perform check_and_update if prompted (we wi
 ```python
 		for i in self.symbols:
 			self.symbol_data[i] = pd.read_csv(os.path.join(self.csv_path,
-                                        '{file_name}.{file_extension}'.format(file_name=i,
-                                        file_extension='csv')),
-                                        header = 0, index_col = 0)
+											'{file_name}.{file_extension}'.format(file_name=i,
+                                        	file_extension='csv')),
+                                        	header = 0, index_col = 0)
+											
 			self.symbol_data[i].columns = columns # clean up columns by re-assigning it 
 			self.symbol_data[i] = self.symbol_data[i].sort_index() #sort index to make sure it's monotonic
             if indexes is None:
@@ -303,7 +304,7 @@ DataFrame's check_and_update will basically get your data ready and as up-to-dat
 					'{file_name}.{file_extension}'.format(file_name = i,
 					file_extension = 'csv')),header = 0, index_col = 0)
                 if (((datetime.date.today().day) > (datetime.datetime.strptime(csv_data.index[-1],'%Y-%m-%d %H:%M:%S').day)) or ((datetime.date.today().month) > (datetime.datetime.strptime(csv_data.index[-1], '%Y-%m-%d %H:%M:%S').month))) and (datetime.date.today().weekday() < 5):
-                    # if today's day or month is later/more than csv's latest day or month (respectively)
+					# if today's day or month is later/more than csv's latest day or month (respectively)
                     # AND that today isn't Saturday or Sunday
                     # we will download new data and update
                     new = None
@@ -320,11 +321,13 @@ DataFrame's check_and_update will basically get your data ready and as up-to-dat
                                 api = 0
                             time.sleep(5)
 			    
-		    # reset new data by dropping existing ones if there are any
+		    		# reset new data by dropping existing ones if there are any
                     new = new.drop(new.index.intersection(csv_data.index))
-		    # add new data to existing csv data, right beneath it, since we already dropped intersecting indexes
+					
+		    		# add new data to existing csv data, right beneath it, since we already dropped intersecting indexes
                     csv_data = csv_data.append(new)
-		    # save the newly updated data
+					
+		    		# save the newly updated data
                     csv_data.to_csv(os.path.join(self.csv_path,
                             '{file_name}.{file_extension}'.format(file_name = i,
                             file_extension = 'csv')))
@@ -361,7 +364,7 @@ As you can see, for timestamps and bars, we are keeping track of them with two d
 Now that we understand how this works, we will write our abstract functions.
 ```python
 	# This is used by abstract method update_bars() to obtain the new bar
-	def get_new_bar(self,symbol,stamp):
+    def get_new_bar(self,symbol,stamp):
         csv_data = self.symbol_data[symbol]
         new_bar = csv_data.loc[stamp] #bar contains informations, with its name = stamp
         return new_bar #return a pandas series to be appended to latest_symbol_data
