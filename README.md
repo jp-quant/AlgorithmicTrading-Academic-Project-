@@ -217,8 +217,9 @@ class DataFrame(object):
     
     @abstractmethod
     # [OPTIONAL] use to add any additional data to the dataframe base on calculations off market OHLCV data
-    def add_data(self,symbols,periods,sma,ewma,cumreturns,hpfilter):
-        raise NotImplementedError('implement add_sma to proceed') 
+    def add_data(self,symbols,periods,sma,ewma,
+                arith_ret,hpfilter,log_ret,d1close,d2close):
+        raise NotImplementedError('implement add_sma() to proceed') 
 
 ```
 Now that we're done with setting up a general DataFrame class for our template to inherit on. We will proceed on creating the actual dataframe that will be used, we'll name it CSVData.
@@ -412,11 +413,12 @@ Now that we understand how this works, we will write our abstract functions.
                 print('N needs to be an integer >= 0')
             elif N > 0:
                 return bars_list[-N:]
-				
+	
+	# [OPTIONAL]
 	def add_data(self,symbols,periods=None,sma=False,ewma=False,
                 arith_ret=False,hpfilter=False,log_ret=False,d1close=False,d2close=False):
         # use to add any additional calculations for backtesting data during initlization
-        # all calculations are performed on close price, usually called by Strategy's initlization
+        # all calculations are performed on close price, usually called by Strategy's initialization
         # default None assigned to minimize errors
         print('--------------------------------------------------------')
         print('----------ADDING REQUESTED DATA FROM STRATEGY-----------')
