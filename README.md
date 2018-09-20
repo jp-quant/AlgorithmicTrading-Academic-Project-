@@ -19,7 +19,8 @@ Algorithmic trading allows individuals to rid fundamental and psychological hunc
  - Only focus on backtesting engine first, live trading will be implemented in the future with more updated Broker
  - Only download and update stocks by using included AlphaVantage API Key (no options, forex, etc yet)
  - If you have csv data on other markets to backtest on, feel free to incorporate it.
- - *Current Strategy*: Daily portfolio allocations optimizations through maximizing sharpe ratio across all holdings
+ - Trading at 1min interval (all codes in repository are called for such). To trade at other interval, modify codes.
+ - *Daily Strategy*: Daily portfolio allocations optimizations through maximizing sharpe ratio across all holdings
 
 ## General Blueprint
 Our engine is structured to be an event-driven system. Although slower than vectorised backtesting structure, by doing this, in addition to ridding psychological hunches and guessing, written codes can be recycled to adapt to live trading in the future. Components are listed sequentially below, ascending from most basic to complex. As each component inherits the ones above, the last component, Strategy, is where most quantitative work reside.
