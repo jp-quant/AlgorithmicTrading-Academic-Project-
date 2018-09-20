@@ -244,7 +244,7 @@ The last line of our initialization process is load_csv(), a function which we w
 First we'll perform check to whether the csv data exists or not,. This is an interactive process and the only one we need as it will be prompted the moment backtest.py runs. If there's no csv data available for certain symbols, it will print them out. Finally, it will ask the user if he, or she, want to perform Check and Update, which we will go over next.
 ```python
 	def load_csv(self):
-    	indexes = None
+		indexes = None
 		columns = ['open','high','low','close','volume']
         not_seen = []
         for i in self.symbols:
