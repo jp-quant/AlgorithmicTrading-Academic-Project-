@@ -304,7 +304,7 @@ DataFrame's check_and_update will basically get your data ready and as up-to-dat
 					'{file_name}.{file_extension}'.format(file_name = i,
 					file_extension = 'csv')),header = 0, index_col = 0)
                 if (((datetime.date.today().day) > (datetime.datetime.strptime(csv_data.index[-1],'%Y-%m-%d %H:%M:%S').day)) or ((datetime.date.today().month) > (datetime.datetime.strptime(csv_data.index[-1], '%Y-%m-%d %H:%M:%S').month))) and (datetime.date.today().weekday() < 5):
-					# if today's day or month is later/more than csv's latest day or month (respectively)
+                    # if today's day or month is later/more than csv's latest day or month (respectively)
                     # AND that today isn't Saturday or Sunday
                     # we will download new data and update
                     new = None
@@ -321,16 +321,16 @@ DataFrame's check_and_update will basically get your data ready and as up-to-dat
                                 api = 0
                             time.sleep(5)
 			    
-		    		# reset new data by dropping existing ones if there are any
+		    # reset new data by dropping existing ones if there are any
                     new = new.drop(new.index.intersection(csv_data.index))
 					
-		    		# add new data to existing csv data, right beneath it, since we already dropped intersecting indexes
+		    # add new data to existing csv data, right beneath it, since we already dropped intersecting indexes
                     csv_data = csv_data.append(new)
 					
-		    		# save the newly updated data
+		    # save the newly updated data
                     csv_data.to_csv(os.path.join(self.csv_path,
-                            '{file_name}.{file_extension}'.format(file_name = i,
-                            file_extension = 'csv')))
+                            	'{file_name}.{file_extension}'.format(file_name = i,
+                            	file_extension = 'csv')))
                 else:
                     print(i+ '\'s ' + 'OHLCV data is up to date. No update needed.')
                     # other, aka latest csv's latest timestamp is up to date, we won't do anything
@@ -363,11 +363,12 @@ First, we have to understand how data is being handled in our event-driven syste
 As you can see, for timestamps and bars, we are keeping track of them with two different variables, one for tracking all updated bars+stamps and one contains all bars+stamps that loaded by load_csv()
 Now that we understand how this works, we will write our abstract functions.
 ```python
-	# This is used by abstract method update_bars() to obtain the new bar
+    # This is used by abstract method update_bars() to obtain the new bar
     def get_new_bar(self,symbol,stamp):
         csv_data = self.symbol_data[symbol]
         new_bar = csv_data.loc[stamp] #bar contains informations, with its name = stamp
-        return new_bar #return a pandas series to be appended to latest_symbol_data
+        return new_bar
+	#return a pandas series to be appended to latest_symbol_data
 	
 	def update_bars(self,stop_at=None):
         # before updating bars, we need to grab the next timestamp and delete it from our existing ones
@@ -388,18 +389,20 @@ Now that we understand how this works, we will write our abstract functions.
 					# append new bar to latest_symbol_data
                     self.latest_symbol_data[i].append(bar)
 			
-			# IMPORTANT: THIS WILL THEN PLACE A MARKETEVENT WITH THE NEWEST STAMP IN QUEUE
+            # IMPORTANT: THIS WILL THEN PLACE A MARKETEVENT WITH THE NEWEST STAMP IN QUEUE
             self.events.put(MarketEvent(stamp))
-			# [optional: enter date in string format as csv indexes to tell backtest to stop at certain time]
+	    
+	    # [optional: enter date in string format as csv indexes to tell backtest to stop at certain time]
             if stop_at == None:
                 pass
             else:
                 if stamp == stop_at:
                     self.continue_backtest = False
                     print('As instructed, backtest stops at:',str(stop_at))
-		# We perform our update_bars() with try and except to identify when there's no more stamps to be obtained
-		# This means that our timestamps is empty, thus will cause an IndexError problem
-		# leading no more data is available to load, thus backtest will be terminated.
+		 
+        # We perform our update_bars() with try and except to identify when there's no more stamps to be obtained
+        # This means that our timestamps is empty, thus will cause an IndexError problem
+        # leading no more data is available to load, thus backtest will be terminated.
         except IndexError:
             self.continue_backtest = False
             print('BACKTEST COMPLETE.')
@@ -433,14 +436,14 @@ Now that we understand how this works, we will write our abstract functions.
         if arith_ret == True:
             print('-> Arithmetic Daily Returns')
         if hpfilter == True:
-			# This is not recommended for tick by tick calculations since it's a static trend filter
+            # This is not recommended for tick by tick calculations since it's a static trend filter
             print('-> HP (Hodrick-Prescott) Filter')
         if log_ret == True:
             print('-> Logarithmic Daily Returns (log of Arithmetic)')
 		if d1close == True:
-			print('-> First-Order Difference (on Close)')
+		    print('-> First-Order Difference (on Close)')
 		if d2close == True:
-			print('-> Second-Order Difference (on Close)')
+		    print('-> Second-Order Difference (on Close)')
         else:
             print('--> NONE')
         print('--------------------------------------------------------')
