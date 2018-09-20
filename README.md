@@ -246,7 +246,7 @@ First we'll perform check to whether the csv data exists or not,. This is an int
 ```python
     def load_csv(self):
         indexes = None
-		columns = ['open','high','low','close','volume']
+        columns = ['open','high','low','close','volume']
         not_seen = []
         for i in self.symbols:
             path_check = os.path.exists(self.csv_path+'/'+i+'.csv')
