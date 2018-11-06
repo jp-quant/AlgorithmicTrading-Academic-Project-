@@ -7,20 +7,20 @@
  - [Features Log](https://github.com/xphysics/AlgorithmicTrading#features-log)
  - [General Blueprint](https://github.com/xphysics/AlgorithmicTrading#blueprint)
  - [Components Breakdown/How-To-Use](https://github.com/xphysics/AlgorithmicTrading#components-breakdownhow-to-use)
-   - [backtest.py](https://github.com/xphysics/AlgorithmicTrading#1-backtestpy---run-to-start-backtesting-process)
-   - [event.py](https://github.com/xphysics/AlgorithmicTrading#2-eventpy)
-   - [broker.py](https://github.com/xphysics/AlgorithmicTrading#3-brokerpy)
-   - [data.py](https://github.com/xphysics/AlgorithmicTrading#4-datapy)
+   - [data.py](https://github.com/xphysics/AlgorithmicTrading#1)
+   - [backtest.py](https://github.com/xphysics/AlgorithmicTrading#2-backtestpy---run-to-start-backtesting-process)
+   - [event.py](https://github.com/xphysics/AlgorithmicTrading#3-eventpy)
+   - [broker.py](https://github.com/xphysics/AlgorithmicTrading#4-brokerpy)
 
 ## Introduction
 Algorithmic trading allows individuals to rid fundamental and psychological hunches, or guessings, when trading any financial markets, stocks, bonds, forex, options, etc. With the extensive and flexible event-driven structure of this project, users can craft customary component templates, such as portfolio, dataframe or algo strategies, and implement them to backtest on any desired market, as long as time series data is available. This program is an ongoing and continuously improving database, with potentially endless implementations to be added.
 
 ## Features Log
  - Only focus on backtesting engine first, live trading will be implemented in the future with more updated Broker
- - Only download and update stocks by using included AlphaVantage API Key (no options, forex, etc yet)
+ - Download and update stocks by using included AlphaVantage API Key (no options, forex, etc yet)
  - If you have csv data on other markets to backtest on, feel free to incorporate it.
- - Trading at 1min interval (all codes in repository are called for such). To trade at other interval, modify codes.
- - *Daily Strategy*: Daily portfolio allocations optimizations through maximizing sharpe ratio across all holdings
+ - Trading at 1min interval (all codes in repository are called for such). To trade at other interval, modify them
+ - *NEWEST INTEGRATION*: Market Predictions using Neural Networks -> (https://github.com/xphysics/Market-Predictions-with-Tensorflow-Neural-Networks)
 
 ## General Blueprint
 Our engine is structured to be an event-driven system. Although slower than vectorised backtesting structure, by doing this, in addition to ridding psychological hunches and guessing, written codes can be recycled to adapt to live trading in the future. Components are listed sequentially below, ascending from most basic to complex. As each component inherits the ones above, the last component, Strategy, is where most quantitative work reside.
@@ -39,168 +39,14 @@ The goal of trading financial markets quantitatively is to continuously perform 
 
 ##  Components Breakdown/How-To-Use
 #### Getting Started
-- If you do not have Python 3.7, download it [here](https://www.python.org/downloads/release/python-370/ "here").
-- In terminal, navigate to project directory and type `pip install -r requirements.txt` to install all required modules for usage.
+- If you do not have Python 3.6.5, download it [here](https://www.python.org/downloads/release/python-365/ "here").
+- In terminal, navigate to project directory and type `pip3 install -r requirements.txt` to install all required modules for usage.
 
 ------------
-
-#### 1. BACKTEST.PY - (Run to start backtesting process)
-After importing all necessary components and requirement modules, we will first set our `symbols` to trade, and `csv_path` to upload financial data and update if necessary.
-```python
-# symbols in list form with each asset name in string
-symbols=['AAPL', 'GOOG', 'AMZN', 'NVDA', 'TSLA', 'NFLX', 'FB' ,'AMD', 'CSCO', 'INTC']
-# define our csv path by joining current path (project's folder) and database
-csv_path=os.path.join(os.getcwd(),'database')
-```
-Next up, we will initialize all of our components (more extensive details on codes later).
-```python
-Events = queue.Queue() #event-driven queueing system
-Broker = broker.BasicBroker(events = Events)
-DataFrame = data.CSVData(events = Events, csv_path = csv_path, symbols = symbols)
-Portfolio = portfolio.SamplePortfolio(bars = DataFrame, events = Events)
-Strategy = strategy.SampleStrategy(bars = DataFrame, events = Events, portfolio = Portfolio)
-```
-Now that everything is successfully initialized, we will start our backtesting process . Keep in mind you do not have to know the specifics at the moment of each method called, but rather focus on their functionalities and what they do. Their detailed explanations will be shown later.
-```python
-'''--------------------------------DESCRIPTION----------------------------------
-OUTER LOOP: First we start updating our historical data from the database
-            onto ourDataFrame. This is equivalent to a new bar popping
-            up on your ticker chart. After the method is called, DataFrame
-            will automatically place a MarketEvent into our event queue.
-            This will be retreived firstly in our inner loop to process the
-            newest data.
-INNER LOOP: Start by retreiving the first event in our event queue, which is
-            the MarketEvent placed from the outer loop. Portfolio and
-            Strategy will then retreive MarketEvent with a stamp to update
-            portfolio timestamp and calculate possible signals to generate
-            SignalEvents to place into queue. This process continues on as
-            SignalEvent would be passed on to Portfolio to generate an
-            OrderEvent to be placed in queued. This OrderEvent will then
-            be received by our Broker to fulfill the order. After the order
-            is fulfilled, the Broker will place a FillEvent into the queue.
-            This event queue will be retreived again by our portfolio.
-            Portfolio will then update necessary informations such as
-            assets values, positions, portfolio values, etc.
-            This loop will continues on until all necessary performances
-            are executed. This will prompts the Queue.empty to break
-            out of the inner loop to return to the outer loop to update
-            more bars.
-This goes on until all bars are updated and backtest is complete.
----------------------------------------------------------------------------------------'''
-#------OUTER LOOP------#
-while True:
-	if DataFrame.continue_backtest == True:
-  		DataFrame.update_bars()
-	else:
-	 	break
-#-------INNER LOOP-------#
-	while True:
-		try:
-			event = Events.get(False)
-		except queue.Empty:
-			break
-
-		if event is not None:
-			if event.type == 'MARKET':
-				Portfolio.update_market(event) 
-				Strategy.calculate_signals(event)
-			elif event.type == 'SIGNAL':
-				Portfolio.update_signal(event)
-			elif event.type == 'ORDER':
-				Broker.execute_order(event)
-			elif event.type == 'FILL':
-				Portfolio.update_portfolio(event)
-```
-#### 2. EVENT.PY
-As an event-driven backtesting engine, we require an Event class that creates and identifies different event queues.
-There are 4 different events to be identified by our components.
-
- - **MarketEvent**: placed in queue by DataFrame as soon as new bars have been updated. The event only needs to contain the timestamp which signifies the latest bars' timestamp. Retreived by Portfolio to update its current holdings and values reflected by the new prices. Strategy will also retreive it to calculate potential signals to be placed in queue.
-	
-```python
-class MarketEvent:
-
-    def __init__(self, stamp):
-        self.type = 'MARKET'
-        self.stamp = stamp
-```
- - **SignalEvent**: placed in queue by Strategy after it performed necessary calculations needed after the latest bars are updated. This will thus be retreived by Portfolio to generate orders. The event needs to contain information needed to generate orders, including the timestamp, symbol, action and quantity. Meaning that each asset has its own event rotation queue as our engine will iterate through all of desired assets to trade.
-```python     
-class SignalEvent:
-
-    def __init__(self,symbol,stamp,action = None,quantity = None):
-        self.type = 'SIGNAL'
-        self.symbol = symbol
-        self.stamp = stamp
-        self.action = action # BUY, SELL, EXIT
-        self.quantity = quantity
-```
- - **OrderEvent**: placed in queue by Portfolio after it retreived the SignalEvent. Portfolio will then generate the order necessary and place them into queue as OrderEvents, which will be retreived by our Broker to execute the trade. OrderEvent therefore must include informations for the Broker to perform its task. We also configure the way OrderEvent will be printed whenever called necessary.
-```python
-class OrderEvent:
-
-    def __init__(self,symbol,stamp,order_type,quantity):
-        self.type = 'ORDER'
-        self.symbol = symbol
-        self.quantity = quantity
-        self.order_type = order_type
-        self.stamp = stamp
-
-    def __repr__(self):
-        return "ORDER --> Symbol=%s, Type=%s, Quantity=%s TimeStamp= %s " % (self.symbol, self.order_type, self.quantity, self.stamp)
-```
- - **FillEvent**: placed in queue by Broker after the order(s) desired have been executed. This FillEvent will be retreived by our Portfolio to update all holdings trackings and portfolio values, again, reflected by the changes made through the orders that were placed.
-```python
-class FillEvent:
-    def __init__(self,stamp,symbol,exchange,
-                quantity,order_type,commission=None):
-                self.type = 'FILL'
-                self.stamp = stamp
-                self.symbol = symbol
-                self.exchange = exchange
-                self.quantity = quantity
-                self.order_type = order_type
-
-                if commission is None:
-                    self.commission = self.calculate_commission()
-                else:
-                    self.commission = commission
-
-    def calculate_commission(self):
-    # OPTIONAL FOR NOW: OUR CURRENT MODEL JUST ASSUME NO COMMISSION REQUIRED FOR SIMPLICITY
-            return 0
-```
-#### 3. BROKER.PY
-At the moment, our broker class is fairly simple as it will be responsible for "executing" orders, basically taking in OrderEvents and placing FillEvents into queue.
-First, we'll define a general Broker class to enforce abstract method(s) to be implemented and called. We'll also do this for other components as well. This is to enforce the general blueprint of how our backtesting engine work, therefore any new versions created (ex: Live Trading Broker) will also have to contain those required methods.
-```python
-class Broker(object):
-
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def execute_order(self, event):
-        raise NotImplementedError('Implement execute_order before proceeding')
-```
-Now that we have our execute_order() defined as an abstract method. We will proceed to make any broker we want, inherting the general Broker class we just created. In this case, we will create our BasicBroker with the abstract method.
-```python
-class BasicBroker(Broker):
-
-    def __init__(self, events):
-        self.events = events
-        
-    def execute_order(self, event):
-        if event.type == 'ORDER':
-            fill_event = FillEvent(event.stamp,
-                            event.symbol, 'BROKER', event.quantity,
-                            event.order_type)
-            self.events.put(fill_event)
-```
-Pretty straight forward, the Broker initializes our Event Queue, to "put" events in, as its only required argument. It contains the abstract method required to take in specific OrderEvent and fulfill it, thus creating a FillEvent and put it in the queue.
-
-#### 4. DATA.PY
-Now we will start on one of our essential components. DataFrame is responsible for handling and showing data for other components to access for usage, like retreiving latest bars, timestamps, etc.
-Again, after importing necessary modules, we will create a general DataFrame class with defined abstract methods to be included in templates.
+#### 1. OBTAIN DATA & CONSTRUCT DATAFRAME [data.py]
+To even start our backtesting process, we first need to gather market data to be traded/backtested on.
+We will first proceed to build our dataframe for other modules to be used. The dataframe's blueprint is built for future integration of live trading as it is event driven.
+Every DataFrame constructed will adhere to the following abstract methods, meaning that it must include these methods for other modules to call upon and use.
 ```python
 class DataFrame(object):
 
@@ -477,4 +323,158 @@ Now that we understand how this works, we will write our abstract functions.
                 self.symbol_data[i]['d2close'] = self.symbol_data[i]['close'] - self.symbol_data[i]['close'].shift(1)
             self.symbol_data[i] = self.symbol_data[i].drop(self.symbol_data[i].index[:index_to_drop])
 ```
+
+#### 2. BACKTEST.PY - (Run to start backtesting process)
+After importing all necessary components and requirement modules, we will first set our `symbols` to trade, and `csv_path` to upload financial data and update if necessary.
+```python
+# symbols in list form with each asset name in string
+symbols=['AAPL', 'GOOG', 'AMZN', 'NVDA', 'TSLA', 'NFLX', 'FB' ,'AMD', 'CSCO', 'INTC']
+# define our csv path by joining current path (project's folder) and database
+csv_path=os.path.join(os.getcwd(),'database')
+```
+Next up, we will initialize all of our components (more extensive details on codes later).
+```python
+Events = queue.Queue() #event-driven queueing system
+Broker = broker.BasicBroker(events = Events)
+DataFrame = data.CSVData(events = Events, csv_path = csv_path, symbols = symbols)
+Portfolio = portfolio.SamplePortfolio(bars = DataFrame, events = Events)
+Strategy = strategy.SampleStrategy(bars = DataFrame, events = Events, portfolio = Portfolio)
+```
+Now that everything is successfully initialized, we will start our backtesting process . Keep in mind you do not have to know the specifics at the moment of each method called, but rather focus on their functionalities and what they do. Their detailed explanations will be shown later.
+```python
+'''--------------------------------DESCRIPTION----------------------------------
+OUTER LOOP: First we start updating our historical data from the database
+            onto ourDataFrame. This is equivalent to a new bar popping
+            up on your ticker chart. After the method is called, DataFrame
+            will automatically place a MarketEvent into our event queue.
+            This will be retreived firstly in our inner loop to process the
+            newest data.
+INNER LOOP: Start by retreiving the first event in our event queue, which is
+            the MarketEvent placed from the outer loop. Portfolio and
+            Strategy will then retreive MarketEvent with a stamp to update
+            portfolio timestamp and calculate possible signals to generate
+            SignalEvents to place into queue. This process continues on as
+            SignalEvent would be passed on to Portfolio to generate an
+            OrderEvent to be placed in queued. This OrderEvent will then
+            be received by our Broker to fulfill the order. After the order
+            is fulfilled, the Broker will place a FillEvent into the queue.
+            This event queue will be retreived again by our portfolio.
+            Portfolio will then update necessary informations such as
+            assets values, positions, portfolio values, etc.
+            This loop will continues on until all necessary performances
+            are executed. This will prompts the Queue.empty to break
+            out of the inner loop to return to the outer loop to update
+            more bars.
+This goes on until all bars are updated and backtest is complete.
+---------------------------------------------------------------------------------------'''
+#------OUTER LOOP------#
+while True:
+	if DataFrame.continue_backtest == True:
+  		DataFrame.update_bars()
+	else:
+	 	break
+#-------INNER LOOP-------#
+	while True:
+		try:
+			event = Events.get(False)
+		except queue.Empty:
+			break
+
+		if event is not None:
+			if event.type == 'MARKET':
+				Portfolio.update_market(event) 
+				Strategy.calculate_signals(event)
+			elif event.type == 'SIGNAL':
+				Portfolio.update_signal(event)
+			elif event.type == 'ORDER':
+				Broker.execute_order(event)
+			elif event.type == 'FILL':
+				Portfolio.update_portfolio(event)
+```
+#### 3. EVENT.PY
+As an event-driven backtesting engine, we require an Event class that creates and identifies different event queues.
+There are 4 different events to be identified by our components.
+
+ - **MarketEvent**: placed in queue by DataFrame as soon as new bars have been updated. The event only needs to contain the timestamp which signifies the latest bars' timestamp. Retreived by Portfolio to update its current holdings and values reflected by the new prices. Strategy will also retreive it to calculate potential signals to be placed in queue.
+	
+```python
+class MarketEvent:
+
+    def __init__(self, stamp):
+        self.type = 'MARKET'
+        self.stamp = stamp
+```
+ - **SignalEvent**: placed in queue by Strategy after it performed necessary calculations needed after the latest bars are updated. This will thus be retreived by Portfolio to generate orders. The event needs to contain information needed to generate orders, including the timestamp, symbol, action and quantity. Meaning that each asset has its own event rotation queue as our engine will iterate through all of desired assets to trade.
+```python     
+class SignalEvent:
+
+    def __init__(self,symbol,stamp,action = None,quantity = None):
+        self.type = 'SIGNAL'
+        self.symbol = symbol
+        self.stamp = stamp
+        self.action = action # BUY, SELL, EXIT
+        self.quantity = quantity
+```
+ - **OrderEvent**: placed in queue by Portfolio after it retreived the SignalEvent. Portfolio will then generate the order necessary and place them into queue as OrderEvents, which will be retreived by our Broker to execute the trade. OrderEvent therefore must include informations for the Broker to perform its task. We also configure the way OrderEvent will be printed whenever called necessary.
+```python
+class OrderEvent:
+
+    def __init__(self,symbol,stamp,order_type,quantity):
+        self.type = 'ORDER'
+        self.symbol = symbol
+        self.quantity = quantity
+        self.order_type = order_type
+        self.stamp = stamp
+
+    def __repr__(self):
+        return "ORDER --> Symbol=%s, Type=%s, Quantity=%s TimeStamp= %s " % (self.symbol, self.order_type, self.quantity, self.stamp)
+```
+ - **FillEvent**: placed in queue by Broker after the order(s) desired have been executed. This FillEvent will be retreived by our Portfolio to update all holdings trackings and portfolio values, again, reflected by the changes made through the orders that were placed.
+```python
+class FillEvent:
+    def __init__(self,stamp,symbol,exchange,
+                quantity,order_type,commission=None):
+                self.type = 'FILL'
+                self.stamp = stamp
+                self.symbol = symbol
+                self.exchange = exchange
+                self.quantity = quantity
+                self.order_type = order_type
+
+                if commission is None:
+                    self.commission = self.calculate_commission()
+                else:
+                    self.commission = commission
+
+    def calculate_commission(self):
+    # OPTIONAL FOR NOW: OUR CURRENT MODEL JUST ASSUME NO COMMISSION REQUIRED FOR SIMPLICITY
+            return 0
+```
+#### 4. BROKER.PY
+At the moment, our broker class is fairly simple as it will be responsible for "executing" orders, basically taking in OrderEvents and placing FillEvents into queue.
+First, we'll define a general Broker class to enforce abstract method(s) to be implemented and called. We'll also do this for other components as well. This is to enforce the general blueprint of how our backtesting engine work, therefore any new versions created (ex: Live Trading Broker) will also have to contain those required methods.
+```python
+class Broker(object):
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def execute_order(self, event):
+        raise NotImplementedError('Implement execute_order before proceeding')
+```
+Now that we have our execute_order() defined as an abstract method. We will proceed to make any broker we want, inherting the general Broker class we just created. In this case, we will create our BasicBroker with the abstract method.
+```python
+class BasicBroker(Broker):
+
+    def __init__(self, events):
+        self.events = events
+        
+    def execute_order(self, event):
+        if event.type == 'ORDER':
+            fill_event = FillEvent(event.stamp,
+                            event.symbol, 'BROKER', event.quantity,
+                            event.order_type)
+            self.events.put(fill_event)
+```
+Pretty straight forward, the Broker initializes our Event Queue, to "put" events in, as its only required argument. It contains the abstract method required to take in specific OrderEvent and fulfill it, thus creating a FillEvent and put it in the queue.
 [MORE COMING SOON]
