@@ -21,6 +21,6 @@ class BasicBroker(Broker):
     def execute_order(self, event):
         if event.type == 'ORDER':
             fill_event = FillEvent(event.stamp,
-                            event.symbol, 'BROKER', event.quantity,
-                            event.order_type)
+                            event.symbol, 'BROKER', event.shares,
+                            event.action,event.order_type)
             self.events.put(fill_event)

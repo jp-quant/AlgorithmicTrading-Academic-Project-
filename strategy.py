@@ -1,13 +1,17 @@
 import datetime
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import queue
+import statsmodels.api as sm
+from math import floor
 from abc import ABCMeta, abstractmethod
 from event import SignalEvent
-import statsmodels.api as sm #HPFilter
-from statsmodels.tsa.seasonal import seasonal_decompose #ETS
-from statsmodels.tsa.stattools import adfuller #unit root test for stationarity
+from event import MarketEvent
 from scipy.optimize import minimize
+import talib
+
+from nn_bbox import Stocks_BBox
 
 
 class Strategy(object):
@@ -18,145 +22,133 @@ class Strategy(object):
     def calculate_signals(self):
         raise NotImplementedError('implement calculate_signals() to proceed')
 
-##----------------------------------------------------
-## SAMPLE STRATEGY (Portfolio Optimization + Trending Analysis)
-##----------------------------------------------------
-class SampleStrategy(Strategy):
+
+
+class PortfolioSharpeMaximization(Strategy):
+
+    # [Sample Strategy for Algorithmic Trading Program] - written by Jack P.
+    # Utilize basic statistical techniques for portfolio management
+    # STRATEGY BLUEPRINT
+    '''
+    The goal is to maximize our portfolio sharpe ratio, which comprises of a diversifying
+    amount of stocks, and this is how we maximize our sharpe ratio:
+    -- CALCULATE WEIGHTS FOR ALL TRADABLE ASSETS
+    
+    Portfolio's Sharpe Ratio = (Portfolio's Expected Return - Risk Free Rate)/Portfolio's Return STD
+
+    The equation above is the main one that we need, the fundamental value of invesments
+    Portfolio's Expected Return = E(R) = sum of assets expected returns times the allocation weight
+
+    Portfolio's Return STD = STD(R) = square root of its variance
+    Var(R) = sum of covariances times the two weights in which the covariance measured to
+
+    As we can see, the only input variable need is the logarithmic returns of all assets
+    at a certain lookback time (at the tail of our data)
+
+    '''
 
     def __init__(self,bars,events,portfolio):
         self.bars = bars
         self.symbols = self.bars.symbols
         self.events = events
         self.portfolio = portfolio
-        #if a strategy involves any technical indicators, you need to modify the dataframe
-        #for this, I will add more data into the dataframe through initilize calculations
-        self.periods = [5,8,13] # for MA calculations
-        # DATA TO ADD = SMA, EWMA, DAILY RETURNS (ARITH AND LOG), DIFFERENCING (1ST AND 2ND ORDER)
-        self.bars.add_data(self.symbols,periods=self.periods,sma=True,ewma=True,
-                            arith_ret=True,log_ret=True,d1close=True,d2close=True)
-        self.assets_allocations = pd.DataFrame(columns=self.symbols)
-        self.market_daily_rvs = {}  # set daily returns and volatility/risk limits for each assets to track
-        for s in self.symbols:
-            self.market_daily_rvs[s] = pd.DataFrame(columns=['returns','volatility','sharpe'])
-
 
 
     def calculate_signals(self, event):
         if event.type == 'MARKET':
-            # IF CURRENT STAMP DATE == START DATE: DO NOTHIN!
-            if datetime.datetime.strptime(event.stamp,'%Y-%m-%d %H:%M:%S').date() == datetime.datetime.strptime(self.bars.latest_stamps[0],'%Y-%m-%d %H:%M:%S').date():
-                for s in self.symbols:
-                    signal = SignalEvent(s,event.stamp,None,0)
-                    self.events.put(signal)
-            # ONCE ABOVE STATEMENT IS FALSE: START CALCULATIONS
-            else:
-                # IF START OF A NEW DAY, PERFORM SIGNALS CALCULATIONS FOR START OF THE DAY
-                if (datetime.datetime.strptime(self.bars.latest_stamps[-1],'%Y-%m-%d %H:%M:%S').date() != datetime.datetime.strptime(self.bars.latest_stamps[-2],'%Y-%m-%d %H:%M:%S').date()):
-                    # AT THE START OF EVERYDAY, WE PERFORM FULL ALLOCATIONS ANALYSIS (BASE ON DAILY RETURNS SINCE START DAY)
-                    signals = self.full_allocations_optimization_signals(event)
-                    # UPDATE NECESSARY DATA FOR TODAY'S TRADING
-                    self.update_daily_rvs(event)
-                    #----[IN PROGRESS]
-                    for s in signals:
-                        self.events.put(s)
-                # IN PROGRESS...[DO NOTHING ATM]
-                else:
-                    for s in self.symbols:
-                        signal = SignalEvent(s,event.stamp,None,0)
-                        self.events.put(signal)
+            all_signals = []
+            #----CHECK AND MODIFY EXISTING POSITIONS
+            #----CONSTANTLY OPTIMIZING ALLOCATIONS AT 50% OF TOTAL PORTFOLIO VALUE
+            allocations_signals = self.allocations_optimization_signals(event,self.symbols,'full')
+            for s in allocations_signals:
+                all_signals.append(s)
+            #----PUT ALL SIGNALS INTO QUEUE----#
+            if len(all_signals) != 0:
+                for s in all_signals:
+                    self.events.put(s)
+            #----------------------------------#
 
-    def full_allocations_optimization_signals(self,event):
+    def allocations_optimization_signals(self,event,symbols,mode,allocations_pct=1,tail_count=None):
         # WE UPDATE ASSETS_ALLOCATIONS EVERYTIME WE DO FULL OPTIMIZATIONS
-        allocations = (self.calculate_optimal_allocations(mode='full').loc[self.symbols])/2
-        current_portfolio_value = self.portfolio.cash_balance
-        for s in self.symbols:
-            current_portfolio_value += self.portfolio.current_holdings[s]['value']
-        value_allocations = (current_portfolio_value*allocations.sum(axis=1)).round(6)
+        allocations_plan = self.calculate_allocations_plan(event,symbols,mode,allocations_pct,tail_count)
+        # ALLOCATIONS PLAN CREATED CONTAINS FRACTIONAL SHARE ALLOCATIONS
         signals = []
-        for s in self.symbols:
-            current_close = self.portfolio.current_holdings[s]['close']
-            current_value = self.portfolio.current_holdings[s]['value']
-            if current_value < value_allocations[s]:
-                action = 'BUY'
-                quantity = round(abs((value_allocations[s] - current_value)/current_close),6)
-            elif current_value > value_allocations[s]:
+        buying_power = self.portfolio.cash_balance
+        # we'll start with cash balance as the buying power
+        # this will adjust as we adjust positions (hypothetically)
+        for s in symbols:
+            # First check if we can get back any buying power by selling part of our shares
+            if allocations_plan.current_positions[s] > allocations_plan.share_allocations[s]:
                 action = 'SELL'
-                quantity = round(abs((current_value - value_allocations[s])/current_close),6)
+                shares = abs(allocations_plan.share_allocations[s]-allocations_plan.current_positions[s])
+                # since we're selling n shares, we're getting n*close of the assets back as buying power
+                buying_power += shares*allocations_plan.closes[s]
+                if (shares == 0) or (action == None):
+                    pass
+                else:
+                    signals.append(SignalEvent(s,shares = shares,action = action, order_type = 'MARKET',
+                                                stamp = event.stamp))
+        for s in symbols:
+            # Now we supposedly have an atleast equal or higher amount of buying power due to adjustment we'll do everything else
+            if buying_power < abs(allocations_plan.value_allocations[s]):
+                action = 0
+                shares = 0
+            elif allocations_plan.current_positions[s] < allocations_plan.share_allocations[s]:
+                action = 'BUY'
+                shares = abs(allocations_plan.share_allocations[s]-allocations_plan.current_positions[s])
             else:
                 action = None
-                quantity = 0
-            signals.append(SignalEvent(s,event.stamp,action,quantity))
+                shares = 0
+            if (shares == 0) or (action == None):
+                pass
+            else:
+                signals.append(SignalEvent(s,shares = shares,action = action, order_type = 'MARKET',
+                                            stamp = event.stamp))
         return signals
 
-
-    def tail_optimal_allocations_signals(self,event,tail_count=90):
-        # calculate optimal allocations for assets trading and generate signals for portfolio to change
-        allocations = self.calculate_optimal_allocations(mode='tail',tail_count=tail_count)
+    def calculate_allocations_plan(self,event,symbols,mode,allocations_pct=1,tail_count=None):
+        result = pd.DataFrame()
+        allocations = (self.calculate_optimal_allocations(symbols=symbols,mode=mode,tail_count=tail_count).loc[symbols])
+        close = pd.Series(data = 0.0, index = symbols)
+        value = pd.Series(data = 0.0, index = symbols)
+        position = pd.Series(data = 0.0, index = symbols)
         current_portfolio_value = self.portfolio.cash_balance
-        for s in self.symbols:
-            current_portfolio_value += self.portfolio.current_holdings[s]['value']
-        value_allocations = (current_portfolio_value*allocations.sum(axis=1)).round(6)
-        signals = []
-        for s in self.symbols:
-            current_close = self.portfolio.current_holdings[s]['close']
-            current_value = self.portfolio.current_holdings[s]['value']
-            if current_value < value_allocations[s]:
-                action = 'BUY'
-                quantity = round(abs((value_allocations[s] - current_value)/current_close),6)
-            elif current_value > value_allocations[s]:
-                action = 'SELL'
-                quantity = round(abs((current_value - value_allocations[s])/current_close),6)
-            else:
-                action = None
-                quantity = 0
-            signals.append(SignalEvent(s,event.stamp,action,quantity))
-        return signals
-    
-    def generate_buy_and_hold_signal(self,s):
-        bar = self.bars.get_latest_bars(s, N=1)
-        quantity = (self.portfolio.initial_balance/len(self.symbols))/bar[-1]['close']
-        if bar is not None and bar != []:
-            stamp = bar[-1].name
-            if self.portfolio.current_holdings[s]['position'] == 0:
-                signal = SignalEvent(s, stamp, action = 'BUY',quantity = quantity)
-            else:
-                signal = SignalEvent(s,stamp,None,0)
-            return signal
+        for s in symbols:
+            current_portfolio_value += self.portfolio.holdings[s].at[event.stamp,'value']
+            close[s] = self.portfolio.holdings[s].at[event.stamp,'close']
+            value[s] = self.portfolio.holdings[s].at[event.stamp,'value']
+            position[s] = self.portfolio.holdings[s].at[event.stamp,'position']
+        value_allocations = (allocations_pct*current_portfolio_value*allocations['LONG']).round(6)
+        result['value_allocations'] = value_allocations
+        result['closes'] = close
+        result['share_allocations'] = np.floor(result['value_allocations']/result['closes'])
+        result['current_values'] = value
+        result['current_positions'] = position
+        return result
 
+    #---------------------------------PORTFOLIO OPTIMIZATION--------------------------------#
+    #------all functions below are used for finding optimal allocations for our assets------#
 
-#---------------------------------PORTFOLIO OPTIMIZATION--------------------------------#
-#------------all functions below are used for finding optimal allocations for our assets------------#
-
-# INSPIRED SOURCE: http://bit.ly/2NYwHvD
-
-
-    # RUN THIS FUNCTION BY ITSELF TO FIND OPTIMAL ALLOCATIONS THROUGH MATHEMATICAL CALCULATIONS
-    # This is a much faster and efficient way to optimize time and efficiency
-    def calculate_optimal_allocations(self,mode,tail_count=None):
+    def calculate_optimal_allocations(self,symbols,mode,tail_count=None):
         # USING SCIPY.OPTIMIZE'S MINIMIZE() FUNCTION TO OBTAIN OPTIMAL allocations and positions for latest trends
         cons = ({'type':'eq','fun':self.check_sum})
         bounds = []
         init_guess = []
         log_ret = {}
-        for s in self.symbols:
+        for s in symbols:
             bounds.append((0,1))
-            init_guess.append(1/len(self.symbols))
+            init_guess.append(1/len(symbols))
         if mode == 'tail':
             try:
-                for s in self.symbols:
-                    log_ret[s] = pd.DataFrame(self.bars.latest_symbol_data[s]).tail(tail_count).log_ret
+                for s in symbols:
+                    df = self.bars.latest_symbol_data[s].tail(tail_count)
+                    log_ret[s] = np.log(df.close/df.close.shift(1)).dropna()
             except TypeError:
                 print('Tail count needs to be an integer.')
-        elif mode == 'last_day':
-            stamps = self.portfolio.daily_logged_stamps[-1]
-            for s in self.symbols:
-                log_ret[s] = pd.DataFrame(self.bars.latest_symbol_data[s]).loc[stamps].log_ret
         elif mode == 'full':
-            for s in self.symbols:
-                log_ret[s] = pd.DataFrame(self.bars.latest_symbol_data[s]).log_ret
-        elif mode == 'position_value':
-            for s in self.symbols:
-                log_ret[s] = self.position_value_ts(s)
+            for s in symbols:
+                df = self.bars.latest_symbol_data[s]
+                log_ret[s] = np.log(df.close/df.close.shift(1)).dropna()
         log_ret = pd.DataFrame(log_ret)    
         max_sharpe = minimize(self.neg_sharpe,
                             x0=init_guess,
@@ -164,216 +156,30 @@ class SampleStrategy(Strategy):
                             method='SLSQP',
                             bounds = bounds,
                             constraints = cons)
-        min_sharpe = minimize(self.pos_sharpe,
-                            x0=init_guess,
-                            args=log_ret,
-                            method='SLSQP',
-                            bounds = bounds,
-                            constraints = cons)
-        long_rvs = self.ret_vol_sharpe(list(max_sharpe.x),log_ret=log_ret)
-        short_rvs = self.ret_vol_sharpe(list(min_sharpe.x),log_ret=log_ret)
-        long_allocations = pd.Series(data=max_sharpe.x,index=self.symbols)
-        short_allocations = pd.Series(data=min_sharpe.x,index=self.symbols)*(-1)
+        long_rvs = self.sharpe_report(list(max_sharpe.x),log_ret=log_ret)
+        long_allocations = pd.Series(data=max_sharpe.x,index=symbols)
         result = pd.DataFrame()
         result['LONG'] = long_allocations.append(long_rvs)
-        result['SHORT'] = short_allocations.append(short_rvs)
         return result
 
 
-# <<-----------------| FUNCTIONS USED FOR ALLOCATIONS CALCULATION |----------------->>
-
-    # minimize positive sharpe = maximizing negative sharpe
-    def pos_sharpe(self,allocations,log_ret):
-        return self.ret_vol_sharpe(allocations,log_ret)[2]
     # minimize negative sharpe = maximizing positive sharpe
     def neg_sharpe(self,allocations,log_ret):
-        return self.ret_vol_sharpe(allocations,log_ret)[2] * (-1)
-
-    # minimizing volatility = efficient frontier (set of optimal portfolio with minimal risk)
+        return self.sharpe_report(allocations,log_ret)[2] * (-1)
     
     #constraint
     def check_sum(self,allocations):
         return (np.sum(allocations) - 1)
+    
+    def sharpe_report(self,allocations,log_ret): 
 
+        # Can be used for multiple purposes
+        # The function takes in the log returns of allocated asset values
+        # and return the sharpe report for it
 
-    def ret_vol_sharpe(self,allocations,log_ret): # use minimize() to apply to any value retuns
-        # take assigned allocations for all assets and their concatenated logarithmic returns for each specified time frame
-        # allow us to place different positions for different assets 
-        # return list: [returns, volatility, sharpe ratio]
-        if len(allocations) != len(self.symbols):
-            print('Length of allocations needs to be equal to length of symbols assigned')
-        else:
-            if type(log_ret) != pd.DataFrame:
-                print('log_ret needs to be a return dataframe of all allocated symbols')
-            else:
-                weights = np.array(allocations)
-                returns = np.sum(log_ret.mean() * weights) * len(log_ret)
-                volatility = np.sqrt(np.dot(weights.T,np.dot(log_ret.cov()*len(log_ret),weights)))
-                sharpe_ratio = returns/volatility
-                return pd.Series(data = [returns,volatility,sharpe_ratio],index = ['returns','volatility','sharpe'])
-
-
-# <<-------| SIMULATE OPTIMAL ALLOCATIONS |------->>
-#                (OPTIONAL SECTION)
-
-    # RUN THIS FUNCTION BY ITSELF TO FIND OPTIMAL ALLOCATIONS THROUGH SIMULATIONS
-    # This is much less efficient compared to mathemtical way above but much easier to understand
-    def simulate_optimal_allocations(self,mode,tail_count=None,simulations_count=1000):
-        # run simulations to find best allocation ratio for all assets
-        # using logarithmic returns and data that's constantly being updated
-        # return allocations with the highest sharpe ratio (each minute)
-        trials = simulations_count #amount of time we will run our simulation
-        all_weights = np.zeros((trials,len(self.symbols)))
-        returns = np.zeros(trials)
-        volatility = np.zeros(trials)
-        sharpe_ratio = np.zeros(trials)
-        log_ret = {}
-        if mode == 'tail':
-            try:
-                for s in self.symbols:
-                    log_ret[s] = pd.DataFrame(self.bars.latest_symbol_data[s]).tail(tail_count).log_ret
-            except TypeError:
-                print('Tail count needs to be an integer.')
-        elif mode == 'daily':
-            stamps = self.portfolio.daily_logged_stamps[-1]
-            for s in self.symbols:
-                log_ret[s] = pd.DataFrame(self.bars.latest_symbol_data[s]).loc[stamps].log_ret
-        elif mode == 'full':
-            for s in self.symbols:
-                log_ret[s] = pd.DataFrame(self.bars.latest_symbol_data[s]).log_ret
-        log_ret = pd.DataFrame(log_ret)
-        np.random.seed(simulations_count) 
-        for t in range(trials):
-            weights = np.array(np.random.random(len(log_ret.columns)))
-            weights = weights/np.sum(weights)
-            all_weights[t,:] = weights
-            returns[t] = np.sum(log_ret.mean() * weights) * len(log_ret)
-            volatility[t] = np.sqrt(np.dot(weights.T,np.dot(log_ret.cov()*len(log_ret),weights)))
-            sharpe_ratio[t] = returns[t]/volatility[t]
-        
-        buy_rvs = pd.Series(data = [returns[sharpe_ratio.argmax()],
-                                    volatility[sharpe_ratio.argmax()],
-                                    sharpe_ratio.max()],index = ['returns','volatility','sharpe'])
-        sell_rvs = pd.Series(data = [returns[sharpe_ratio.argmin()],
-                                    volatility[sharpe_ratio.argmin()],
-                                    sharpe_ratio.min()],index = ['returns','volatility','sharpe'])
-        buy_allocations = pd.Series(data=all_weights[sharpe_ratio.argmax(),:],
-                                                    index=self.symbols)
-        sell_allocations = pd.Series(data=all_weights[sharpe_ratio.argmin(),:],
-                                                    index=self.symbols)
-        result = pd.DataFrame()
-        result['LONG'] = buy_allocations.append(buy_rvs)
-        result['SHORT'] = sell_allocations.append(sell_rvs)
-        return(result)
-
-
-#----------------------------------MARKET ANALYSIS-------------------------------------#
-#-------THIS IS WHERE WE WILL PERFORM MARKET ANALYSIS AND PLAY WITH PROBABILITIES------#
-# ------[IN PROGRESS] -> ARIMA & SEASONAL ARIMA MODELING
-
-
-    def hp_trend_analysis(self,symbol):
-        trends = self.hp_trend_report(symbol)
-        
-
-
-
-    def intraday_positions_adjustments(self,event):
-        # LOOK FOR POTENTIAL OPTIMAL ALLOCATIONS ADJUSTMENTS WITHIN THE DAY
-        # BASE ON MARKET'S VOLATILITY/RISK AND ASSETS' INVESTMENT RETURNS
-        # [IN PROGRESS]
-        for s in self.symbols:
-            pos_value = self.position_value_ts(s)
-            rvs = self.market_daily_rvs[s]
-
-
-    # RETURN CURRENT ASSET'S POSITION TIMESERIES, START WHERE WE FIRST ASSIGNED POSITION VALUE
-    def position_value_ts(self,symbol):
-        record = self.portfolio.all_holdings[symbol]
-        current_position = self.portfolio.current_holdings[symbol]['position']
-        for i in range(-1,(-len(record)-1),-1): #going backwards
-            indexed_position = record.loc[record.index[i]]['position']
-            if indexed_position == current_position:
-                pass
-            elif indexed_position != current_position:
-                start_stamp = record.index[i+1]
-                break
-        position_value_ts = record.loc[record.index[record.index.get_loc(start_stamp):]]
-        return position_value_ts.round(6)
-
-
-    def update_daily_rvs(self,event):
-        # RECORD PREVIOUS DAY'S RET, VOL AND SHARPE VALUES
-        stamps = self.portfolio.daily_logged_stamps[-1] # previous day stamps
-        ind = datetime.datetime.strptime(stamps[-1],'%Y-%m-%d %H:%M:%S').date()
-        for s in self.symbols:
-            df = pd.DataFrame(self.bars.latest_symbol_data[s]).loc[stamps].log_ret
-            exp_ret = df.mean()*len(df)
-            exp_vol = df.std()*len(df)
-            sharpe = exp_ret/exp_vol
-            self.market_daily_rvs[s] = self.market_daily_rvs[s].append(pd.Series(data=[exp_ret,exp_vol,sharpe],
-                                                        index=['returns','volatility','sharpe'],
-                                                        name=ind))
-
-
-
-    def hp_trend_report(self,dataframe):
-        # categorize trend in ordered time using HP Filter's derivative (dtrend (delta trend))
-        # RETURN: Sequential list of trends with respect to time
-        #         Each element contains: [direction, extracted dataframe based on trend's index (this will be used for multiple other purposes)]
-        # IMPORTANT: THIS CAN ONLY BE APPLIED TO STATIC DATAFRAME, USE FOR HISTORICAL DATA ANALYSIS
-        #            WITH ABSOLUTE LOOK-AHEAD BIAS. RECOMMEND TO USE PERIODICALLY (DAILY, HOURLY, ETC)
-        hpfilter = sm.tsa.filters.hpfilter(dataframe.close)
-        hp_trend = hpfilter[1]
-        hp_noise = hpfilter[0]
-        result = pd.DataFrame().append(dataframe)
-        result['hptrend'] = hp_trend
-        result['hpnoise'] = hp_noise
-        dtrend = ((hp_trend/hp_trend.shift(1))-1).dropna()
-        start = 0
-        record = []
-        track = []
-        while len(track) != len(dtrend.index):
-            if dtrend[start] < 0:
-                down = (dtrend < 0)
-                indexes = []
-                for i in range(start,len(down)):
-                    if down[i] == True:
-                        track.append(i)
-                        indexes.append(down.index[i])
-                        if i == range(len(down))[-1]: #if we reach last value
-                            record.append(['DOWN',result.loc[pd.Index(indexes)]])
-                            break
-                    elif down[i] == False:
-                        start = i
-                        record.append(['DOWN',result.loc[pd.Index(indexes)]])
-                        break
-            elif dtrend[start] > 0:
-                up = (dtrend > 0)
-                indexes = []
-                for i in range(start,len(up)):
-                    if up[i] == True:
-                        track.append(i)
-                        indexes.append(up.index[i])
-                        if i == range(len(up))[-1]: #if we reach last value
-                            record.append(['UP',result.loc[pd.Index(indexes)]])
-                            break
-                    elif up[i] == False:
-                        start = i
-                        record.append(['UP',result.loc[pd.Index(indexes)]])
-                        break
-            elif dtrend[start] == 0:
-                still = (dtrend == 0)
-                indexes = []
-                for i in range(start,len(still)):
-                    if still[i] == True:
-                        track.append(i)
-                        indexes.append(still.index[i])
-                        if i == range(len(still))[-1]: #if we reach last value
-                            record.append(['STILL',result.loc[pd.Index(indexes)]])
-                            break
-                    elif still[i] == False:
-                        start = i
-                        record.append(['STILL',result.loc[pd.Index(indexes)]])
-                        break
-        return record
+        weights = np.array(allocations)
+        returns = np.sum(log_ret.mean() * weights)
+        volatility = np.sqrt(np.dot(weights.T,np.dot(log_ret.cov(),weights)))
+        sharpe_ratio = returns/volatility
+        return pd.Series(data = [returns,volatility,sharpe_ratio],index = ['returns','volatility','sharpe'])
+    #--------------------------------------------------------------------------------------#
