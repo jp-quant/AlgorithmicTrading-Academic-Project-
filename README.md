@@ -1,6 +1,7 @@
 
 # Algorithmic Trading Engine [An Academic Project]
-This is the very first algorithmic trading engine I worked on with collaborations with university peers, with simple event-driven architecture for educational purposes.
+This is the very first algorithmic trading engine I worked on with collaborations with university peers
+Engine is designed for backtesting strategies under a simple event-driven architecture for educational purposes.
 
 ## Table of Contents
  - [Introduction](https://github.com/xphysics/AlgorithmicTrading#introduction)
