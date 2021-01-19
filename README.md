@@ -1,6 +1,6 @@
 
-# Algorithmic Trading Program
-First Sample Strategy (2/9/19): Portfolio Sharpe Maximization
+# Algorithmic Trading Engine [An Academic Project]
+This is the very first algorithmic trading engine I worked on with collaborations with university peers, with simple event-driven architecture for educational purposes.
 
 ## Table of Contents
  - [Introduction](https://github.com/xphysics/AlgorithmicTrading#introduction)
@@ -390,4 +390,5 @@ class BasicBroker(Broker):
             self.events.put(fill_event)
 ```
 Pretty straight forward, the Broker initializes our Event Queue, to "put" events in, as its only required argument. It contains the abstract method required to take in specific OrderEvent and fulfill it, thus creating a FillEvent and put it in the queue.
-[MORE COMING SOON]
+
+[Archived Engine for Educational Purposes, if you have any questions, please message me.]
